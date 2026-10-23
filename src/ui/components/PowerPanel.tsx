@@ -1,0 +1,67 @@
+import { useState } from 'react';
+import { CLASSES } from '../../game/classes';
+import { GAUGE_MAX } from '../../game/difficulty';
+import { powerAvailability } from '../../game/engine';
+import { getCard } from '../../game/nemesis';
+import type { GameState } from '../../game/types';
+import { Gauge } from './Board';
+
+interface Props {
+  state: GameState;
+  playerId: string;
+  disabled?: boolean;
+  onActivate: (targetUid?: string) => void;
+}
+
+export function PowerPanel({ state, playerId, disabled, onActivate }: Props) {
+  const [choosing, setChoosing] = useState(false);
+  const player = state.players.find((p) => p.id === playerId);
+  if (!player) return null;
+  const cls = CLASSES[player.classId];
+  const availability = powerAvailability(state, playerId);
+  const ready = player.gauge >= GAUGE_MAX;
+
+  const activate = () => {
+    if (cls.needsRootTarget && state.roots.length > 1) setChoosing(true);
+    else onActivate(state.roots[0]?.uid);
+  };
+
+  return (
+    <section className={`panel power-panel${ready ? ' ready' : ''}`}>
+      <div className="power-head">
+        <div>
+          <div className="panel-title">
+            {cls.emoji} {cls.powerName}
+          </div>
+          <small>{cls.powerText}</small>
+        </div>
+        <Gauge value={player.gauge} />
+      </div>
+      {choosing ? (
+        <div className="root-choice">
+          <p>Quelle racine retenir ?</p>
+          {state.roots.map((r) => (
+            <button
+              key={r.uid}
+              className="secondary"
+              onClick={() => {
+                setChoosing(false);
+                onActivate(r.uid);
+              }}
+            >
+              {getCard(state.config.nemesisId, r.cardId).name} (⏳ {r.countdown})
+            </button>
+          ))}
+          <button className="ghost" onClick={() => setChoosing(false)}>
+            Annuler
+          </button>
+        </div>
+      ) : (
+        <button className="power big" disabled={disabled || !availability.ok} onClick={activate}>
+          {availability.ok ? 'Activer le pouvoir' : availability.reason}
+        </button>
+      )}
+      <p className="hint">Chaque flèche dans le jaune remplit la jauge.</p>
+    </section>
+  );
+}
