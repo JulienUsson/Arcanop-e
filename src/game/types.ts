@@ -124,10 +124,12 @@ export interface Root {
 
 export type TurnCard = 'volley' | 'nemesis';
 
+export type VolleyStep = 'council' | 'shoot' | 'input';
+
 export type Phase =
   | { kind: 'lobby' }
   | { kind: 'turn' }
-  | { kind: 'volley'; volley: number; submissions: Record<string, Arrow[]> }
+  | { kind: 'volley'; volley: number; step: VolleyStep; submissions: Record<string, Arrow[]> }
   | { kind: 'over'; result: 'victory' | 'defeat'; reason: string };
 
 export type LogTone = 'info' | 'good' | 'bad' | 'power';
@@ -138,12 +140,28 @@ export interface LogEntry {
   text: string;
 }
 
+export type EventKind = 'intro' | 'volley' | 'nemesis' | 'resolve' | 'round' | 'power' | 'victory' | 'defeat';
+
+export interface Hit {
+  playerId: string;
+  score: number;
+  action: Action | null;
+  amount: number;
+  target: string;
+  killed?: string;
+}
+
 export interface GameEvent {
   id: number;
+  kind: EventKind;
   title: string;
   narration: string;
   lines: string[];
   tone: LogTone;
+  cardId?: string;
+  playerId?: string;
+  hits?: Hit[];
+  boosted?: boolean;
 }
 
 export interface Focus {
@@ -179,6 +197,7 @@ export interface GameState {
 export type GameAction =
   | { type: 'start' }
   | { type: 'draw' }
+  | { type: 'advance' }
   | { type: 'submit'; playerId: string; arrows: Arrow[] }
   | { type: 'resolve' }
   | { type: 'power'; playerId: string; targetUid?: string }

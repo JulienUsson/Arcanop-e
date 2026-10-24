@@ -3,12 +3,15 @@ import { CLASSES } from '../../game/classes';
 import { nextCardLabel } from '../../game/engine';
 import type { HostSession } from '../../net/host';
 import { Board } from '../components/Board';
+import { ClassSheet } from '../components/ClassSheet';
 import { CopyCode } from '../components/CopyCode';
-import { Narration, useNarrationVoice } from '../components/Narration';
+import { EventStage } from '../components/EventStage';
+import { Modal } from '../components/Modal';
+import { Chronicle, useNarrationVoice } from '../components/Narration';
+import { PhaseGuide } from '../components/PhaseGuide';
 import { PowerPanel } from '../components/PowerPanel';
 import { QrCode } from '../components/QrCode';
 import { QrScanner } from '../components/QrScanner';
-import { QuadrantMap } from '../components/QuadrantMap';
 import { VolleyInput } from '../components/VolleyInput';
 import { useWakeLock } from '../wakeLock';
 import { EndSummary } from './EndSummary';
@@ -20,15 +23,40 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
   const { state, roster } = snap;
   const [tab, setTab] = useState<Tab>(state.phase.kind === 'lobby' ? 'archers' : 'combat');
   const [selected, setSelected] = useState<string | null>(null);
+  const [sheet, setSheet] = useState(false);
   useWakeLock(true);
   useNarrationVoice(state.lastEvent);
 
   const phase = state.phase;
   const focus = (kind: 'creature' | 'root', uid: string | null) => session.dispatch({ type: 'focus', kind, uid });
+  const submittedCount = phase.kind === 'volley' ? Object.keys(phase.submissions).length : 0;
+  const freePlayers = state.players.filter((p) => roster.find((r) => r.playerId === p.id)?.status === 'free');
+  const selectedId =
+    selected && state.players.some((p) => p.id === selected) ? selected : (freePlayers[0]?.id ?? state.players[0]?.id);
+  const selectedPlayer = state.players.find((p) => p.id === selectedId);
 
-  if (phase.kind === 'over') {
-    return (
-      <div className="screen host">
+  const resolve = () => {
+    const missing = state.players.length - submittedCount;
+    if (missing > 0 && !confirm(`${missing} archer${missing > 1 ? 's n’ont' : ' n’a'} pas saisi sa volée. Résoudre quand même ?`)) return;
+    session.dispatch({ type: 'resolve' });
+    setTab('combat');
+  };
+
+  const advance = () => {
+    session.dispatch({ type: 'advance' });
+    if (phase.kind === 'volley' && phase.step === 'shoot' && freePlayers.length > 0) setTab('saisie');
+  };
+
+  const undo = snap.canUndo && (
+    <button className="ghost small" onClick={() => session.undo()}>
+      ↶ Annuler la dernière action
+    </button>
+  );
+
+  return (
+    <div className="screen host">
+      <EventStage state={state} event={state.lastEvent} />
+      {phase.kind === 'over' ? (
         <EndSummary
           state={state}
           actions={
@@ -44,127 +72,115 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
             </>
           }
         />
-      </div>
-    );
-  }
-
-  const submittedCount = phase.kind === 'volley' ? Object.keys(phase.submissions).length : 0;
-  const selectedId =
-    selected && state.players.some((p) => p.id === selected)
-      ? selected
-      : (roster.find((r) => r.status === 'free')?.playerId ?? state.players[0]?.id);
-  const selectedPlayer = state.players.find((p) => p.id === selectedId);
-
-  const resolve = () => {
-    const missing = state.players.length - submittedCount;
-    if (missing > 0 && !confirm(`${missing} archer${missing > 1 ? 's n’ont' : ' n’a'} pas saisi sa volée. Résoudre quand même ?`)) return;
-    session.dispatch({ type: 'resolve' });
-    setTab('combat');
-  };
-
-  return (
-    <div className="screen host">
-      <nav className="tabs">
-        <button className={tab === 'combat' ? 'active' : ''} onClick={() => setTab('combat')}>
-          Combat
-        </button>
-        <button className={tab === 'saisie' ? 'active' : ''} onClick={() => setTab('saisie')}>
-          Saisie{phase.kind === 'volley' ? ` ${submittedCount}/${state.players.length}` : ''}
-        </button>
-        <button className={tab === 'archers' ? 'active' : ''} onClick={() => setTab('archers')}>
-          Archers <span className="count">{snap.phones}📱</span>
-        </button>
-      </nav>
-
-      {tab === 'combat' && (
+      ) : (
         <>
-          {phase.kind === 'lobby' ? (
-            <section className="panel">
-              <p>Connectez les téléphones des archers dans l’onglet « Archers », puis lancez la partie.</p>
-              <button className="primary big" onClick={() => session.dispatch({ type: 'start' })}>
-                Commencer la partie
-              </button>
-            </section>
-          ) : (
+          <nav className="tabs">
+            <button className={tab === 'combat' ? 'active' : ''} onClick={() => setTab('combat')}>
+              ⚔️ Combat
+            </button>
+            <button className={tab === 'saisie' ? 'active' : ''} onClick={() => setTab('saisie')}>
+              🎯 Saisie{phase.kind === 'volley' ? ` ${submittedCount}/${state.players.length}` : ''}
+            </button>
+            <button className={tab === 'archers' ? 'active' : ''} onClick={() => setTab('archers')}>
+              🏹 Archers <span className="count">{snap.phones}📱</span>
+            </button>
+          </nav>
+
+          {tab === 'combat' && (
             <>
-              <Narration event={state.lastEvent} />
-              <section className="controls">
+              <PhaseGuide state={state} role="host">
+                {phase.kind === 'lobby' && (
+                  <button className="primary big" onClick={() => session.dispatch({ type: 'start' })}>
+                    Commencer la partie
+                  </button>
+                )}
                 {phase.kind === 'turn' && (
-                  <button className="primary big" onClick={() => session.dispatch({ type: 'draw' })}>
-                    {nextCardLabel(state)}
+                  <button className="primary big glow" onClick={() => session.dispatch({ type: 'draw' })}>
+                    🃏 {nextCardLabel(state)}
                   </button>
                 )}
-                {phase.kind === 'volley' && (
-                  <>
-                    <p className="volley-status">
-                      Volée {phase.volley} — conseil, tir puis saisie : <strong>{submittedCount}</strong> / {state.players.length} saisies
-                    </p>
-                    <div className="row">
-                      <button className="secondary big" onClick={() => setTab('saisie')}>
-                        Saisir
-                      </button>
-                      <button className="primary big" onClick={resolve}>
-                        Résoudre la volée
-                      </button>
-                    </div>
-                  </>
-                )}
-                {snap.canUndo && (
-                  <button className="ghost small" onClick={() => session.undo()}>
-                    ↶ Annuler la dernière action
+                {phase.kind === 'volley' && phase.step === 'council' && (
+                  <button className="primary big glow" onClick={advance}>
+                    🏹 Au pas de tir !
                   </button>
                 )}
-              </section>
+                {phase.kind === 'volley' && phase.step === 'shoot' && (
+                  <button className="primary big glow" onClick={advance}>
+                    🎯 Flèches tirées : saisie
+                  </button>
+                )}
+                {phase.kind === 'volley' && phase.step === 'input' && (
+                  <div className="row">
+                    <button className="secondary big" onClick={() => setTab('saisie')}>
+                      🎯 Saisir
+                    </button>
+                    <button className={`primary big${submittedCount === state.players.length ? ' glow' : ''}`} onClick={resolve}>
+                      ⚔️ Résoudre
+                    </button>
+                  </div>
+                )}
+                {undo}
+              </PhaseGuide>
+              <Board state={state} roster={roster} onFocus={focus} />
+              <Chronicle log={state.log} />
             </>
           )}
-          <Board state={state} roster={roster} onFocus={focus} />
-        </>
-      )}
 
-      {tab === 'saisie' && selectedPlayer && (
-        <>
-          <div className="player-tabs">
-            {state.players.map((p) => {
-              const entry = roster.find((r) => r.playerId === p.id);
-              const done = phase.kind === 'volley' && !!phase.submissions[p.id];
-              return (
-                <button key={p.id} className={`chip${p.id === selectedId ? ' selected' : ''}`} onClick={() => setSelected(p.id)}>
-                  {CLASSES[p.classId].emoji} {p.name}
-                  {entry?.status === 'online' && ' 📱'}
-                  {done && ' ✓'}
+          {tab === 'saisie' && selectedPlayer && (
+            <>
+              <div className="player-tabs">
+                {state.players.map((p) => {
+                  const entry = roster.find((r) => r.playerId === p.id);
+                  const done = phase.kind === 'volley' && !!phase.submissions[p.id];
+                  return (
+                    <button key={p.id} className={`chip${p.id === selectedId ? ' selected' : ''}`} onClick={() => setSelected(p.id)}>
+                      {CLASSES[p.classId].emoji} {p.name}
+                      {entry?.status === 'online' && ' 📱'}
+                      {done && ' ✓'}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="saisie-head">
+                {roster.find((r) => r.playerId === selectedId)?.status === 'online' ? (
+                  <p className="hint">Cet archer saisit sur son téléphone. Une saisie ici remplace la sienne.</p>
+                ) : (
+                  <span />
+                )}
+                <button className="ghost small" onClick={() => setSheet(true)}>
+                  📜 Fiche {CLASSES[selectedPlayer.classId].name}
                 </button>
-              );
-            })}
-          </div>
-          {roster.find((r) => r.playerId === selectedId)?.status === 'online' && (
-            <p className="hint">Cet archer saisit sur son téléphone. Une saisie ici remplace la sienne.</p>
+              </div>
+              <VolleyInput
+                draftKey={`host:${phase.kind === 'volley' ? phase.volley : 'next'}:${selectedPlayer.id}`}
+                classId={selectedPlayer.classId}
+                coef={selectedPlayer.coef}
+                arrowsPerVolley={state.config.arrowsPerVolley}
+                submitted={phase.kind === 'volley' ? phase.submissions[selectedPlayer.id] : undefined}
+                canSubmit={phase.kind === 'volley'}
+                blockedReason="La saisie s’ouvre quand une carte Volée est tirée."
+                onSubmit={(arrows) => {
+                  session.dispatch({ type: 'submit', playerId: selectedPlayer.id, arrows });
+                  const next = freePlayers.find((p) => p.id !== selectedPlayer.id && phase.kind === 'volley' && !phase.submissions[p.id]);
+                  if (next) setTimeout(() => setSelected(next.id), 600);
+                }}
+              />
+              <PowerPanel
+                state={state}
+                playerId={selectedPlayer.id}
+                onActivate={(targetUid) => session.dispatch({ type: 'power', playerId: selectedPlayer.id, targetUid })}
+              />
+              {sheet && (
+                <Modal label="Fiche de classe" onClose={() => setSheet(false)}>
+                  <ClassSheet classId={selectedPlayer.classId} />
+                </Modal>
+              )}
+            </>
           )}
-          <VolleyInput
-            draftKey={`host:${phase.kind === 'volley' ? phase.volley : 'next'}:${selectedPlayer.id}`}
-            classId={selectedPlayer.classId}
-            coef={selectedPlayer.coef}
-            arrowsPerVolley={state.config.arrowsPerVolley}
-            submitted={phase.kind === 'volley' ? phase.submissions[selectedPlayer.id] : undefined}
-            canSubmit={phase.kind === 'volley'}
-            blockedReason="La saisie s’ouvre quand une carte Volée est tirée."
-            onSubmit={(arrows) => {
-              session.dispatch({ type: 'submit', playerId: selectedPlayer.id, arrows });
-              const next = state.players.find(
-                (p) => p.id !== selectedPlayer.id && phase.kind === 'volley' && !phase.submissions[p.id] && roster.find((r) => r.playerId === p.id)?.status !== 'online',
-              );
-              if (next) setSelected(next.id);
-            }}
-          />
-          <PowerPanel
-            state={state}
-            playerId={selectedPlayer.id}
-            onActivate={(targetUid) => session.dispatch({ type: 'power', playerId: selectedPlayer.id, targetUid })}
-          />
-          <QuadrantMap classId={selectedPlayer.classId} />
+
+          {tab === 'archers' && <ArchersTab session={session} onQuit={onQuit} />}
         </>
       )}
-
-      {tab === 'archers' && <ArchersTab session={session} onQuit={onQuit} />}
     </div>
   );
 }

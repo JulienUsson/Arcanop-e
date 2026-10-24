@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { ClassSheet } from '../components/ClassSheet';
+import { Modal } from '../components/Modal';
 import { CLASS_IDS, CLASSES, LEVELS } from '../../game/classes';
 import { DIFFICULTIES } from '../../game/difficulty';
 import { MORDELUNE, NEMESES } from '../../game/nemesis';
@@ -33,6 +35,7 @@ function loadConfig(): GameConfig {
 
 export function Setup({ onCreate, onBack }: { onCreate: (config: GameConfig) => void; onBack: () => void }) {
   const [config, setConfig] = useState<GameConfig>(loadConfig);
+  const [sheet, setSheet] = useState<ClassId | null>(null);
 
   const updatePlayer = (id: string, patch: Partial<PlayerConfig>) =>
     setConfig((c) => ({ ...c, players: c.players.map((p) => (p.id === id ? { ...p, ...patch } : p)) }));
@@ -85,13 +88,16 @@ export function Setup({ onCreate, onBack }: { onCreate: (config: GameConfig) => 
                     key={id}
                     className={`class-chip${p.classId === id ? ' selected' : ''}`}
                     style={{ ['--class-color' as string]: CLASSES[id].color }}
-                    onClick={() => updatePlayer(p.id, { classId: id })}
+                    onClick={() => (p.classId === id ? setSheet(id) : updatePlayer(p.id, { classId: id }))}
                   >
                     <span>{CLASSES[id].emoji}</span>
                     {CLASSES[id].name}
                   </button>
                 ))}
               </div>
+              <button className="link small-link" onClick={() => setSheet(p.classId)}>
+                📜 Fiche du {CLASSES[p.classId].name} : {CLASSES[p.classId].role.toLowerCase()}, pouvoir « {CLASSES[p.classId].powerName} »
+              </button>
               <div className="row level-row">
                 <select
                   value={level ? String(level.coef) : 'custom'}
@@ -164,6 +170,12 @@ export function Setup({ onCreate, onBack }: { onCreate: (config: GameConfig) => 
           ))}
         </div>
       </section>
+
+      {sheet && (
+        <Modal label="Fiche de classe" onClose={() => setSheet(null)}>
+          <ClassSheet classId={sheet} />
+        </Modal>
+      )}
 
       <div className="footer-actions">
         <button className="ghost" onClick={onBack}>

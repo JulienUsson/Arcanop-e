@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { CLASSES } from '../../game/classes';
 import { GAUGE_MAX } from '../../game/difficulty';
 import { describeCard } from '../../game/engine';
@@ -12,14 +13,44 @@ interface Props {
   onFocus?: (kind: 'creature' | 'root', uid: string | null) => void;
 }
 
+interface Floater {
+  id: number;
+  delta: number;
+}
+
+function useDelta(value: number): { floaters: Floater[]; pulse: 'up' | 'down' | null; pulseKey: number } {
+  const previous = useRef(value);
+  const [floaters, setFloaters] = useState<Floater[]>([]);
+  const [pulse, setPulse] = useState<{ dir: 'up' | 'down' | null; key: number }>({ dir: null, key: 0 });
+  useEffect(() => {
+    const delta = value - previous.current;
+    previous.current = value;
+    if (delta === 0) return;
+    const id = Date.now() + Math.random();
+    setFloaters((f) => [...f, { id, delta }]);
+    setPulse({ dir: delta < 0 ? 'down' : 'up', key: id });
+    const timer = setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 1400);
+    return () => clearTimeout(timer);
+  }, [value]);
+  return { floaters, pulse: pulse.dir, pulseKey: pulse.key };
+}
+
 export function HpBar({ hp, max, tone }: { hp: number; max: number; tone: 'nemesis' | 'tree' | 'creature' | 'root' }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (hp / max) * 100)) : 0;
+  const { floaters, pulse, pulseKey } = useDelta(hp);
   return (
-    <div className={`hp-bar ${tone}`}>
+    <div className={`hp-bar ${tone}${pct <= 25 ? ' low' : ''}`}>
+      <div className="hp-ghost" style={{ width: `${pct}%` }} />
       <div className="hp-fill" style={{ width: `${pct}%` }} />
+      {pulse && <div key={pulseKey} className={`hp-pulse ${pulse}`} />}
       <span className="hp-text">
         {hp} / {max}
       </span>
+      {floaters.map((f) => (
+        <span key={f.id} className={`floater ${f.delta < 0 ? 'down' : 'up'}`}>
+          {f.delta > 0 ? `+${f.delta}` : f.delta}
+        </span>
+      ))}
     </div>
   );
 }
@@ -31,6 +62,15 @@ export function Gauge({ value }: { value: number }) {
         <span key={i} className={`pip${i < value ? ' on' : ''}`} />
       ))}
     </span>
+  );
+}
+
+function Portrait({ kind, hp, children }: { kind: 'nemesis' | 'tree'; hp: number; children: React.ReactNode }) {
+  const { pulse, pulseKey } = useDelta(hp);
+  return (
+    <div key={pulseKey} className={`portrait ${kind}${pulse ? ` hit-${pulse}` : ''}`}>
+      {children}
+    </div>
   );
 }
 
@@ -48,6 +88,24 @@ export function Board({ state, roster, you, onFocus }: Props) {
 
   return (
     <div className="board">
+      <section className="arena">
+        <div className="combatant tree-side">
+          <Portrait kind="tree" hp={state.tree.hp}>
+            🌳
+          </Portrait>
+          <div className="combatant-name">Arbre-Cœur</div>
+          <HpBar hp={state.tree.hp} max={state.tree.maxHp} tone="tree" />
+        </div>
+        <div className="versus">VS</div>
+        <div className="combatant nemesis-side">
+          <Portrait kind="nemesis" hp={state.nemesis.hp}>
+            🥀
+          </Portrait>
+          <div className="combatant-name">{nemesis.name}</div>
+          <HpBar hp={state.nemesis.hp} max={state.nemesis.maxHp} tone="nemesis" />
+        </div>
+      </section>
+
       <section className="panel turn-panel">
         <div className="turn-info">
           <strong>Manche {state.round || '—'}</strong>
@@ -58,22 +116,13 @@ export function Board({ state, roster, you, onFocus }: Props) {
               </span>
             ))}
             {state.turnDeck.map((_, i) => (
-              <span key={`r${i}`} className="turn-card hidden">
-                ?
-              </span>
+              <span key={`r${i}`} className="turn-card hidden" />
             ))}
           </span>
         </div>
-        <div className="wrath-info">
-          Colère : <strong>{state.wrathDeck.length}</strong> carte{state.wrathDeck.length > 1 ? 's' : ''}
+        <div className="wrath-info" title="Cartes de colère restantes">
+          <span className="wrath-stack">📜</span> {state.wrathDeck.length}
         </div>
-      </section>
-
-      <section className="panel foe">
-        <div className="panel-title">
-          💀 {nemesis.name}, <em>{nemesis.title}</em>
-        </div>
-        <HpBar hp={state.nemesis.hp} max={state.nemesis.maxHp} tone="nemesis" />
         {state.wolfBoost > 0 && <div className="badge power">🐺 La Meute chasse : dégâts ×2 à la prochaine volée</div>}
         {revealedCard && (
           <div className="revealed">
@@ -82,64 +131,59 @@ export function Board({ state, roster, you, onFocus }: Props) {
         )}
       </section>
 
-      <section className="panel tree">
-        <div className="panel-title">🌳 Arbre-Cœur</div>
-        <HpBar hp={state.tree.hp} max={state.tree.maxHp} tone="tree" />
+      <section className="panel">
+        <div className="panel-title">
+          🐾 Créatures <small>{onFocus ? 'touchez pour cibler 🎯' : ''}</small>
+        </div>
+        {state.creatures.length === 0 && <p className="empty">Aucune créature : les flèches « Créatures » frappent la Némésis.</p>}
+        <div className="minion-grid">
+          {state.creatures.map((c) => {
+            const card = getCard(state.config.nemesisId, c.cardId);
+            const focused = state.focus.creature === c.uid;
+            return (
+              <button
+                key={c.uid}
+                className={`minion creature${focused ? ' focused' : ''}`}
+                disabled={!onFocus}
+                onClick={() => onFocus?.('creature', focused ? null : c.uid)}
+              >
+                {focused && <span className="focus-mark">🎯</span>}
+                <div className="minion-head">{card.name}</div>
+                <HpBar hp={c.hp} max={c.maxHp} tone="creature" />
+                <small>{describeCard(card, state)}</small>
+              </button>
+            );
+          })}
+        </div>
       </section>
 
       <section className="panel">
-        <div className="panel-title">🐾 Créatures</div>
-        {state.creatures.length === 0 && <p className="empty">Aucune créature. Les flèches « Créatures » frappent la Némésis.</p>}
-        {state.creatures.map((c) => {
-          const card = getCard(state.config.nemesisId, c.cardId);
-          const focused = state.focus.creature === c.uid;
-          return (
-            <button
-              key={c.uid}
-              className={`minion${focused ? ' focused' : ''}`}
-              disabled={!onFocus}
-              onClick={() => onFocus?.('creature', focused ? null : c.uid)}
-            >
-              <div className="minion-head">
-                <span>
-                  {focused && '🎯 '}
-                  {card.name}
-                </span>
-              </div>
-              <HpBar hp={c.hp} max={c.maxHp} tone="creature" />
-              <small>{describeCard(card, state)}</small>
-            </button>
-          );
-        })}
-      </section>
-
-      <section className="panel">
-        <div className="panel-title">🌿 Racines</div>
-        {state.roots.length === 0 && <p className="empty">Aucune racine. Les flèches « Racines » frappent la Némésis.</p>}
-        {state.roots.map((r) => {
-          const card = getCard(state.config.nemesisId, r.cardId);
-          const focused = state.focus.root === r.uid;
-          return (
-            <button
-              key={r.uid}
-              className={`minion root${focused ? ' focused' : ''}${r.countdown <= 1 ? ' urgent' : ''}`}
-              disabled={!onFocus}
-              onClick={() => onFocus?.('root', focused ? null : r.uid)}
-            >
-              <div className="minion-head">
-                <span>
-                  {focused && '🎯 '}
-                  {card.name}
-                </span>
+        <div className="panel-title">
+          🌿 Racines <small>{onFocus ? 'touchez pour cibler 🎯' : ''}</small>
+        </div>
+        {state.roots.length === 0 && <p className="empty">Aucune racine : les flèches « Racines » frappent la Némésis.</p>}
+        <div className="minion-grid">
+          {state.roots.map((r) => {
+            const card = getCard(state.config.nemesisId, r.cardId);
+            const focused = state.focus.root === r.uid;
+            return (
+              <button
+                key={r.uid}
+                className={`minion root${focused ? ' focused' : ''}${r.countdown <= 1 ? ' urgent' : ''}`}
+                disabled={!onFocus}
+                onClick={() => onFocus?.('root', focused ? null : r.uid)}
+              >
+                {focused && <span className="focus-mark">🎯</span>}
                 <span className="countdown" title="Manches avant éclosion">
-                  ⏳ {r.countdown}
+                  ⏳{r.countdown}
                 </span>
-              </div>
-              <HpBar hp={r.hp} max={r.maxHp} tone="root" />
-              <small>{describeCard(card, state)}</small>
-            </button>
-          );
-        })}
+                <div className="minion-head">{card.name}</div>
+                <HpBar hp={r.hp} max={r.maxHp} tone="root" />
+                <small>{describeCard(card, state)}</small>
+              </button>
+            );
+          })}
+        </div>
       </section>
 
       <section className="panel">
@@ -151,8 +195,11 @@ export function Board({ state, roster, you, onFocus }: Props) {
             return (
               <li key={p.id} className={p.id === you ? 'you' : ''}>
                 <span className="who">
-                  {CLASSES[p.classId].emoji} {p.name}
-                  {entry && <span className={`status ${entry.status}`}>{STATUS_LABEL[entry.status]}</span>}
+                  <span className="avatar" style={{ ['--class-color' as string]: CLASSES[p.classId].color }}>
+                    {CLASSES[p.classId].emoji}
+                  </span>
+                  {p.name}
+                  {entry && entry.status !== 'free' && <span className={`status ${entry.status}`}>{STATUS_LABEL[entry.status]}</span>}
                 </span>
                 <span className="right">
                   {phase.kind === 'volley' && <span className={`submitted${submitted ? ' yes' : ''}`}>{submitted ? '✓' : '…'}</span>}

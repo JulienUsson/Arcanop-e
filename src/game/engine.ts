@@ -10,15 +10,19 @@ import type {
   CorruptionCard,
   CreatureCard,
   CreatureEffect,
+  EventKind,
   GameAction,
+  GameEvent,
   GameConfig,
   GameState,
+  Hit,
   LogTone,
   Player,
   PlayerStats,
   RootCard,
   RootEffect,
   TurnCard,
+  VolleyStep,
 } from './types';
 
 const LOG_LIMIT = 80;
@@ -112,6 +116,7 @@ export function createGame(config: GameConfig, seed: number, gameId: string): Ga
 
 class Ctx {
   lines: string[] = [];
+  extra: Partial<GameEvent> = {};
   constructor(public state: GameState) {}
 
   line(text: string, tone: LogTone = 'info') {
@@ -130,9 +135,9 @@ class Ctx {
     return items[Math.floor(this.random() * items.length)];
   }
 
-  event(title: string, narration: string, tone: LogTone) {
+  event(kind: EventKind, title: string, narration: string, tone: LogTone) {
     this.state.eventCounter += 1;
-    this.state.lastEvent = { id: this.state.eventCounter, title, narration, lines: this.lines, tone };
+    this.state.lastEvent = { ...this.extra, id: this.state.eventCounter, kind, title, narration, lines: this.lines, tone };
   }
 }
 
@@ -284,13 +289,13 @@ function checkEnd(ctx: Ctx): boolean {
   if (s.nemesis.hp <= 0) {
     s.phase = { kind: 'over', result: 'victory', reason: `${nemesis.name} est vaincue !` };
     ctx.line(`${nemesis.name} s’effondre. Victoire !`, 'good');
-    ctx.event('Victoire !', nemesis.victory, 'good');
+    ctx.event('victory', 'Victoire !', nemesis.victory, 'good');
     return true;
   }
   if (s.tree.hp <= 0) {
     s.phase = { kind: 'over', result: 'defeat', reason: 'L’Arbre-Cœur est tombé.' };
     ctx.line('L’Arbre-Cœur s’effondre. Défaite…', 'bad');
-    ctx.event('Défaite…', nemesis.defeat, 'bad');
+    ctx.event('defeat', 'Défaite…', nemesis.defeat, 'bad');
     return true;
   }
   return false;
@@ -319,7 +324,7 @@ function start(state: GameState): GameState {
   ctx.line(`${nemesis.name}, ${nemesis.title}, s’éveille avec ${s.nemesis.hp} PV.`);
   newRound(ctx);
   s.phase = { kind: 'turn' };
-  ctx.event(`${nemesis.name}, ${nemesis.title}`, nemesis.intro, 'info');
+  ctx.event('intro', `${nemesis.name}, ${nemesis.title}`, nemesis.intro, 'info');
   return s;
 }
 
@@ -348,7 +353,7 @@ function endRound(ctx: Ctx) {
   if (checkEnd(ctx)) return;
   const title = `Fin de la manche ${s.round}`;
   newRound(ctx);
-  ctx.event(title, ctx.pick(ROUND_NARRATIONS), 'info');
+  ctx.event('round', title, ctx.pick(ROUND_NARRATIONS), 'info');
 }
 
 function playNemesisTurn(ctx: Ctx) {
@@ -357,13 +362,14 @@ function playNemesisTurn(ctx: Ctx) {
   if (s.wrathDeck.length === 0) {
     s.phase = { kind: 'over', result: 'defeat', reason: 'Le paquet de colère est épuisé.' };
     ctx.line(`Le paquet de colère de ${nemesis.name} est épuisé : la Corruption triomphe.`, 'bad');
-    ctx.event('Défaite…', nemesis.defeat, 'bad');
+    ctx.event('defeat', 'Défaite…', nemesis.defeat, 'bad');
     return;
   }
   const [cardId, ...rest] = s.wrathDeck;
   s.wrathDeck = rest;
   s.revealed = false;
   const card = getCard(s.config.nemesisId, cardId);
+  ctx.extra.cardId = cardId;
   ctx.line(`${nemesis.name} joue ${card.name}.`, 'bad');
   if (card.type === 'attack') {
     card.effects.forEach((e) => applyAttackEffect(ctx, e, card.name));
@@ -376,7 +382,7 @@ function playNemesisTurn(ctx: Ctx) {
   s.phase = { kind: 'turn' };
   if (checkEnd(ctx)) return;
   const kindLabel = card.type === 'attack' ? 'Attaque' : card.type === 'creature' ? 'Créature' : 'Racine';
-  ctx.event(`${kindLabel} — ${card.name}`, card.flavor, 'bad');
+  ctx.event('nemesis', `${kindLabel} — ${card.name}`, card.flavor, 'bad');
 }
 
 function draw(state: GameState): GameState {
@@ -392,13 +398,20 @@ function draw(state: GameState): GameState {
   s.turnDiscard = [...s.turnDiscard, card];
   if (card === 'volley') {
     s.volleyCount += 1;
-    s.phase = { kind: 'volley', volley: s.volleyCount, submissions: {} };
+    s.phase = { kind: 'volley', volley: s.volleyCount, step: 'council', submissions: {} };
     ctx.line(`Volée ${s.volleyCount} : conseil, tir, puis saisie des impacts.`);
-    ctx.event(`Volée ${s.volleyCount}`, ctx.pick(VOLLEY_NARRATIONS), 'good');
+    ctx.event('volley', `Volée ${s.volleyCount}`, ctx.pick(VOLLEY_NARRATIONS), 'good');
   } else {
     playNemesisTurn(ctx);
   }
   return s;
+}
+
+const NEXT_STEP: Record<VolleyStep, VolleyStep> = { council: 'shoot', shoot: 'input', input: 'input' };
+
+function advance(state: GameState): GameState {
+  if (state.phase.kind !== 'volley' || state.phase.step === 'input') return state;
+  return { ...state, phase: { ...state.phase, step: NEXT_STEP[state.phase.step] } };
 }
 
 function sanitizeArrows(arrows: Arrow[], max: number): Arrow[] {
@@ -422,18 +435,26 @@ function submit(state: GameState, playerId: string, arrows: Arrow[]): GameState 
 
 type TargetKind = 'creatures' | 'roots';
 
-function damageMinions(ctx: Ctx, kind: TargetKind, amount: number, player: Player): { dealt: number; redirected: boolean } {
+interface MinionDamage {
+  dealt: number;
+  redirected: boolean;
+  target: string;
+  killed: string[];
+}
+
+function damageMinions(ctx: Ctx, kind: TargetKind, amount: number, player: Player): MinionDamage {
   const s = ctx.state;
   const list = kind === 'creatures' ? s.creatures : s.roots;
   if (list.length === 0) {
     s.nemesis.hp = Math.max(0, s.nemesis.hp - amount);
     player.stats.damageNemesis += amount;
-    return { dealt: amount, redirected: true };
+    return { dealt: amount, redirected: true, target: nemesisName(s), killed: [] };
   }
   const focusUid = kind === 'creatures' ? s.focus.creature : s.focus.root;
   const ordered = [...list].sort((a, b) => (a.uid === focusUid ? -1 : b.uid === focusUid ? 1 : 0));
   let remaining = amount;
   let dealt = 0;
+  const killed: string[] = [];
   for (const target of ordered) {
     if (remaining <= 0) break;
     const hit = Math.min(target.hp, remaining);
@@ -442,6 +463,7 @@ function damageMinions(ctx: Ctx, kind: TargetKind, amount: number, player: Playe
     dealt += hit;
     if (target.hp <= 0) {
       ctx.line(`${player.name} abat ${cardName(s, target.cardId)} !`, 'good');
+      killed.push(cardName(s, target.cardId));
       s.wrathDiscard.push(target.cardId);
     }
   }
@@ -454,7 +476,7 @@ function damageMinions(ctx: Ctx, kind: TargetKind, amount: number, player: Playe
     player.stats.damageRoots += dealt;
     if (s.focus.root && !s.roots.some((r) => r.uid === s.focus.root)) s.focus.root = null;
   }
-  return { dealt, redirected: false };
+  return { dealt, redirected: false, target: cardName(s, ordered[0].cardId), killed };
 }
 
 function resolve(state: GameState): GameState {
@@ -464,6 +486,8 @@ function resolve(state: GameState): GameState {
   const phase = state.phase;
   const boost = s.wolfBoost > 0 ? 2 : 1;
   const totals = { nemesis: 0, creatures: 0, roots: 0, heal: 0 };
+  const hits: Hit[] = [];
+  ctx.extra = { hits, boosted: boost > 1 };
   if (boost > 1) ctx.line('La Meute chasse : les dégâts de cette volée sont doublés !', 'power');
   for (const player of s.players) {
     const arrows = phase.submissions[player.id];
@@ -478,6 +502,7 @@ function resolve(state: GameState): GameState {
       if (arrow.score <= 0 || !arrow.action) {
         player.stats.misses += arrow.score <= 0 ? 1 : 0;
         parts.push('hors cible');
+        hits.push({ playerId: player.id, score: 0, action: null, amount: 0, target: '' });
         continue;
       }
       volleyScore += arrow.score;
@@ -494,15 +519,25 @@ function resolve(state: GameState): GameState {
         player.stats.healing += heal;
         totals.heal += heal;
         parts.push(`${arrow.score} → soin ${heal}`);
+        hits.push({ playerId: player.id, score: arrow.score, action: 'heal', amount: heal, target: 'Arbre-Cœur' });
       } else if (arrow.action === 'nemesis') {
         const dmg = power * boost;
         s.nemesis.hp = Math.max(0, s.nemesis.hp - dmg);
         player.stats.damageNemesis += dmg;
         totals.nemesis += dmg;
         parts.push(`${arrow.score} → ${ACTION_LABELS.nemesis} ${dmg}`);
+        hits.push({ playerId: player.id, score: arrow.score, action: 'nemesis', amount: dmg, target: nemesisName(s) });
       } else {
         const dmg = power * boost;
-        const { dealt, redirected } = damageMinions(ctx, arrow.action, dmg, player);
+        const { dealt, redirected, target, killed } = damageMinions(ctx, arrow.action, dmg, player);
+        hits.push({
+          playerId: player.id,
+          score: arrow.score,
+          action: redirected ? 'nemesis' : arrow.action,
+          amount: dealt,
+          target,
+          ...(killed.length ? { killed: killed.join(', ') } : {}),
+        });
         if (redirected) {
           totals.nemesis += dealt;
           parts.push(`${arrow.score} → ${ACTION_LABELS.nemesis} ${dealt} (rien à viser)`);
@@ -529,7 +564,7 @@ function resolve(state: GameState): GameState {
     totals.nemesis > 0
       ? `Les flèches sifflent et ${nemesisName(s)} gémit sous les coups. Il lui reste ${s.nemesis.hp} PV.`
       : 'Les flèches se plantent dans la Corruption. La forêt respire un peu mieux.';
-  ctx.event(`Volée ${phase.volley} résolue`, narration, 'good');
+  ctx.event('resolve', `Volée ${phase.volley} résolue`, narration, 'good');
   return s;
 }
 
@@ -587,7 +622,8 @@ function usePower(state: GameState, playerId: string, targetUid?: string): GameS
   }
   player.gauge = 0;
   player.stats.powersUsed += 1;
-  ctx.event(`${cls.emoji} ${cls.powerName}`, narration, 'power');
+  ctx.extra.playerId = player.id;
+  ctx.event('power', `${cls.emoji} ${cls.powerName}`, narration, 'power');
   return s;
 }
 
@@ -603,6 +639,8 @@ export function reduce(state: GameState, action: GameAction): GameState {
       return start(state);
     case 'draw':
       return draw(state);
+    case 'advance':
+      return advance(state);
     case 'submit':
       return submit(state, action.playerId, action.arrows);
     case 'resolve':

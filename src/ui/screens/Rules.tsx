@@ -1,6 +1,6 @@
-import { ACTION_ICONS, ACTION_LABELS, CLASS_IDS, CLASSES } from '../../game/classes';
+import { ACTION_ICONS, ACTION_LABELS, CLASS_IDS } from '../../game/classes';
 import { GAUGE_MAX } from '../../game/difficulty';
-import { QuadrantMap } from '../components/QuadrantMap';
+import { ClassSheet } from '../components/ClassSheet';
 
 export function Rules({ onBack }: { onBack: () => void }) {
   return (
@@ -40,13 +40,7 @@ export function Rules({ onBack }: { onBack: () => void }) {
         <div className="panel-title">Les esprits</div>
         {CLASS_IDS.map((id) => (
           <div key={id} className="rule-class">
-            <h3>
-              {CLASSES[id].emoji} {CLASSES[id].name} — {CLASSES[id].spirit}
-            </h3>
-            <QuadrantMap classId={id} />
-            <p>
-              <strong>{CLASSES[id].powerName}</strong> : {CLASSES[id].powerText}
-            </p>
+            <ClassSheet classId={id} />
           </div>
         ))}
       </section>
@@ -54,7 +48,7 @@ export function Rules({ onBack }: { onBack: () => void }) {
         <div className="panel-title">Une manche</div>
         <ol>
           <li>Un paquet d’ordre de tour est mélangé : des cartes Volée 🏹 et des cartes Némésis 💀.</li>
-          <li>Carte Volée : l’équipe tient conseil, tire une volée réelle, puis chacun saisit ses impacts. L’hôte résout.</li>
+          <li>Carte Volée : 🗣️ conseil autour du tableau de combat, 🏹 tir réel, 🎯 saisie des impacts, ⚔️ résolution par l’hôte.</li>
           <li>Carte Némésis : elle joue une carte de son paquet de colère (attaque, créature ou racine).</li>
           <li>Fin de manche : chaque créature agit et le compte à rebours des racines diminue.</li>
         </ol>

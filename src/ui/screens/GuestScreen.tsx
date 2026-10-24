@@ -1,24 +1,31 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { CLASSES } from '../../game/classes';
+import type { ClassId } from '../../game/types';
 import type { GuestSession } from '../../net/guest';
 import { Board } from '../components/Board';
+import { ClassSheet } from '../components/ClassSheet';
 import { CopyCode } from '../components/CopyCode';
-import { Narration, useNarrationVoice } from '../components/Narration';
+import { EventStage } from '../components/EventStage';
+import { Modal } from '../components/Modal';
+import { Chronicle, useNarrationVoice } from '../components/Narration';
+import { PhaseGuide } from '../components/PhaseGuide';
 import { PowerPanel } from '../components/PowerPanel';
 import { QrCode } from '../components/QrCode';
 import { QrScanner } from '../components/QrScanner';
-import { QuadrantMap } from '../components/QuadrantMap';
 import { VolleyInput } from '../components/VolleyInput';
 import { useWakeLock } from '../wakeLock';
 import { EndSummary } from './EndSummary';
 
-type Tab = 'cible' | 'combat';
+type Tab = 'cible' | 'combat' | 'fiche';
 
 export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: () => void }) {
   const snap = useSyncExternalStore(guest.subscribe, guest.getSnapshot);
-  const [tab, setTab] = useState<Tab>('cible');
+  const [tab, setTab] = useState<Tab>('combat');
   const [scanning, setScanning] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [preview, setPreview] = useState<ClassId | null>(null);
+  const [welcome, setWelcome] = useState(false);
+  const previousYou = useRef(snap.you);
   useWakeLock(snap.status === 'connected');
   useNarrationVoice(snap.state?.lastEvent ?? null);
 
@@ -32,6 +39,18 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
   useEffect(() => {
     if (snap.status === 'connected') setScanning(false);
   }, [snap.status]);
+
+  useEffect(() => {
+    if (snap.you && snap.you !== previousYou.current) setWelcome(true);
+    previousYou.current = snap.you;
+  }, [snap.you]);
+
+  const phase = snap.state?.phase;
+  const stepKey = phase?.kind === 'volley' ? `${phase.volley}-${phase.step}` : (phase?.kind ?? '');
+  useEffect(() => {
+    if (phase?.kind === 'volley' && phase.step !== 'council') setTab('cible');
+    else if (phase) setTab((t) => (t === 'fiche' ? t : 'combat'));
+  }, [stepKey]);
 
   const { state, you, roster, status } = snap;
   const connected = status === 'connected';
@@ -69,10 +88,13 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
             {status === 'lost' ? (
               <p className="error">Connexion perdue. Demandez une nouvelle invitation à l’hôte pour reprendre votre place.</p>
             ) : (
-              <p>Demandez à l’hôte de créer une invitation, puis scannez-la.</p>
+              <ol className="steps">
+                <li>L’hôte crée une invitation (onglet Archers).</li>
+                <li>Scannez-la, puis montrez votre réponse à l’hôte.</li>
+              </ol>
             )}
             {snap.error && <p className="error">{snap.error}</p>}
-            <button className="primary big" onClick={() => setScanning(true)}>
+            <button className="primary big glow" onClick={() => setScanning(true)}>
               {status === 'lost' ? 'Se reconnecter' : 'Scanner l’invitation'}
             </button>
           </>
@@ -93,11 +115,12 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
   }
 
   const me = state.players.find((p) => p.id === you);
-  const phase = state.phase;
+  const toast = notice && <div className="toast">{notice}</div>;
 
-  if (phase.kind === 'over') {
+  if (state.phase.kind === 'over') {
     return (
       <div className="screen guest">
+        <EventStage state={state} event={state.lastEvent} />
         <EndSummary
           state={state}
           actions={
@@ -120,42 +143,52 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
     return (
       <div className="screen guest">
         {!connected && joinPanel}
-        <h1>Qui êtes-vous ?</h1>
+        <h1>Choisissez votre Gardien</h1>
         <section className="panel">
           <ul className="claim-list">
             {state.players.map((p) => {
-              const entry = roster.find((r) => r.playerId === p.id);
-              const taken = entry?.status === 'online';
+              const cls = CLASSES[p.classId];
+              const taken = roster.find((r) => r.playerId === p.id)?.status === 'online';
               return (
-                <li key={p.id}>
-                  <button className="claim" disabled={!connected || taken} onClick={() => guest.claim(p.id)}>
-                    <span className="emoji">{CLASSES[p.classId].emoji}</span>
+                <li key={p.id} className="claim-row">
+                  <button className="claim" style={{ ['--class-color' as string]: cls.color }} disabled={!connected || taken} onClick={() => guest.claim(p.id)}>
+                    <span className="avatar big">{cls.emoji}</span>
                     <span>
                       <strong>{p.name}</strong>
                       <small>
-                        {CLASSES[p.classId].name} · ×{p.coef}
+                        {cls.name} · {cls.role} · ×{p.coef}
                         {taken && ' · déjà connecté'}
                       </small>
                     </span>
+                  </button>
+                  <button className="ghost small" onClick={() => setPreview(p.classId)} aria-label={`Fiche du ${cls.name}`}>
+                    📜
                   </button>
                 </li>
               );
             })}
           </ul>
         </section>
-        {notice && <div className="toast">{notice}</div>}
+        {preview && (
+          <Modal label="Fiche de classe" onClose={() => setPreview(null)}>
+            <ClassSheet classId={preview} />
+          </Modal>
+        )}
+        {toast}
       </div>
     );
   }
 
   const cls = CLASSES[me.classId];
-  const submitted = phase.kind === 'volley' ? phase.submissions[me.id] : undefined;
+  const volley = state.phase.kind === 'volley' ? state.phase : null;
+  const submitted = volley ? volley.submissions[me.id] : undefined;
 
   return (
     <div className="screen guest">
+      <EventStage state={state} event={state.lastEvent} />
       {!connected && joinPanel}
       <header className="me" style={{ ['--class-color' as string]: cls.color }}>
-        <span className="emoji">{cls.emoji}</span>
+        <span className="avatar big">{cls.emoji}</span>
         <div>
           <strong>{me.name}</strong>
           <small>
@@ -166,28 +199,26 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
       </header>
       <nav className="tabs">
         <button className={tab === 'cible' ? 'active' : ''} onClick={() => setTab('cible')}>
-          Ma cible
+          🎯 Cible{volley && !submitted ? ' •' : ''}
         </button>
         <button className={tab === 'combat' ? 'active' : ''} onClick={() => setTab('combat')}>
-          Combat
+          ⚔️ Combat
+        </button>
+        <button className={tab === 'fiche' ? 'active' : ''} onClick={() => setTab('fiche')}>
+          📜 Fiche
         </button>
       </nav>
 
       {tab === 'cible' && (
         <>
-          <p className={`phase-hint${phase.kind === 'volley' ? ' open' : ''}`}>
-            {phase.kind === 'lobby' && 'La partie va commencer…'}
-            {phase.kind === 'turn' && 'Attendez la prochaine carte Volée.'}
-            {phase.kind === 'volley' &&
-              (submitted ? `Volée ${phase.volley} envoyée. Vous pouvez la corriger jusqu’à la résolution.` : `Volée ${phase.volley} : tirez puis saisissez vos impacts.`)}
-          </p>
+          <PhaseGuide state={state} role="guest" playerId={me.id} compact />
           <VolleyInput
-            draftKey={`guest:${phase.kind === 'volley' ? phase.volley : 'next'}:${me.id}`}
+            draftKey={`guest:${volley ? volley.volley : 'next'}:${me.id}`}
             classId={me.classId}
             coef={me.coef}
             arrowsPerVolley={state.config.arrowsPerVolley}
             submitted={submitted}
-            canSubmit={connected && phase.kind === 'volley'}
+            canSubmit={connected && !!volley}
             blockedReason={connected ? 'La saisie s’ouvre quand l’hôte tire une carte Volée.' : 'Hors ligne : reconnectez-vous pour envoyer.'}
             onSubmit={(arrows) => guest.submit(arrows)}
           />
@@ -197,18 +228,36 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
 
       {tab === 'combat' && (
         <>
-          <Narration event={state.lastEvent} />
+          <PhaseGuide state={state} role="guest" playerId={me.id}>
+            {volley && volley.step !== 'council' && !submitted && (
+              <button className="primary big glow" onClick={() => setTab('cible')}>
+                🎯 Saisir ma volée
+              </button>
+            )}
+          </PhaseGuide>
           <Board state={state} roster={roster} you={you} onFocus={connected ? (kind, uid) => guest.focus(kind, uid) : undefined} />
-          <section className="panel">
-            <div className="panel-title">Mes quadrants</div>
-            <QuadrantMap classId={me.classId} />
-          </section>
+          <Chronicle log={state.log} />
+        </>
+      )}
+
+      {tab === 'fiche' && (
+        <>
+          <ClassSheet classId={me.classId} />
           <button className="ghost wide" onClick={() => guest.release()} disabled={!connected}>
-            Changer d’archer
+            Changer de Gardien
           </button>
         </>
       )}
-      {notice && <div className="toast">{notice}</div>}
+
+      {welcome && (
+        <Modal label="Votre esprit" onClose={() => setWelcome(false)}>
+          <ClassSheet classId={me.classId} />
+          <button className="primary big wide" onClick={() => setWelcome(false)}>
+            Je suis prêt
+          </button>
+        </Modal>
+      )}
+      {toast}
     </div>
   );
 }

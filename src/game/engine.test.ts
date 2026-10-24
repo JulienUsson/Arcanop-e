@@ -64,6 +64,28 @@ describe('moteur', () => {
     expect(alice.stats.damageNemesis).toBe(19);
   });
 
+  it('guide la volée du conseil à la saisie', () => {
+    let s = drawUntil(started(), 'volley');
+    expect(s.phase).toMatchObject({ kind: 'volley', step: 'council' });
+    expect(s.lastEvent?.kind).toBe('volley');
+    s = reduce(s, { type: 'advance' });
+    expect(s.phase).toMatchObject({ step: 'shoot' });
+    s = reduce(s, { type: 'advance' });
+    expect(s.phase).toMatchObject({ step: 'input' });
+    expect(reduce(s, { type: 'advance' })).toBe(s);
+  });
+
+  it('détaille chaque flèche dans l’événement de résolution', () => {
+    let s = drawUntil(started(), 'volley');
+    s = reduce(s, { type: 'submit', playerId: 'a', arrows: [shot(9, 'nemesis'), shot(0, null)] });
+    s = reduce(s, { type: 'resolve' });
+    expect(s.lastEvent?.kind).toBe('resolve');
+    expect(s.lastEvent?.hits).toEqual([
+      { playerId: 'a', score: 9, action: 'nemesis', amount: 9, target: 'Mordelune' },
+      { playerId: 'a', score: 0, action: null, amount: 0, target: '' },
+    ]);
+  });
+
   it('applique le coefficient et le facteur de soin', () => {
     let s = drawUntil(started(), 'volley');
     s = { ...s, tree: { hp: 10, maxHp: 45 } };
@@ -122,6 +144,7 @@ describe('moteur', () => {
     s = drawUntil(s, 'nemesis');
     expect(s.wrathDeck).toHaveLength(deck - 1);
     expect(s.lastEvent?.title).toMatch(/Attaque|Créature|Racine/);
+    expect(s.lastEvent?.cardId).toBe(started().wrathDeck[0]);
   });
 
   it('déclenche les racines en fin de manche', () => {

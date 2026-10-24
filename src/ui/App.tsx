@@ -4,6 +4,7 @@ import { randomSeed } from '../game/rng';
 import type { GameConfig } from '../game/types';
 import { GuestSession } from '../net/guest';
 import { HostSession } from '../net/host';
+import { setSoundEnabled, soundEnabled } from './sfx';
 import { setVoiceEnabled, speechAvailable, voiceEnabled } from './speech';
 import { GuestScreen } from './screens/GuestScreen';
 import { Home } from './screens/Home';
@@ -31,6 +32,7 @@ export function App() {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [host, setHost] = useState<HostSession | null>(() => (mode === 'host' ? HostSession.load() : null));
   const [voice, setVoice] = useState(voiceEnabled);
+  const [sound, setSound] = useState(soundEnabled);
 
   useEffect(() => {
     localStorage.setItem(MODE_KEY, mode);
@@ -70,11 +72,24 @@ export function App() {
         </button>
         {mode === 'host' && <span className="role">Hôte</span>}
         {mode === 'guest' && <span className="role">Archer</span>}
-        {speechAvailable() && (
-          <button className="icon" onClick={toggleVoice} aria-label={voice ? 'Couper la voix' : 'Activer la voix'} title="Lecture vocale">
-            {voice ? '🔊' : '🔇'}
+        <span className="topbar-icons">
+          <button
+            className={`icon${sound ? '' : ' off'}`}
+            onClick={() => {
+              setSoundEnabled(!sound);
+              setSound(!sound);
+            }}
+            aria-label={sound ? 'Couper les sons' : 'Activer les sons'}
+            title="Sons"
+          >
+            🎵
           </button>
-        )}
+          {speechAvailable() && (
+            <button className={`icon${voice ? '' : ' off'}`} onClick={toggleVoice} aria-label={voice ? 'Couper la voix' : 'Activer la voix'} title="Lecture vocale">
+              🗣️
+            </button>
+          )}
+        </span>
       </header>
       <main>
         {mode === 'home' && (
