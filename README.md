@@ -22,8 +22,8 @@ Le workflow `.github/workflows/deploy.yml` publie le build sur GitHub Pages à c
 
 1. **Avant d'aller au pas de tir**, chaque archer ouvre l'application et l'installe (« Ajouter à l'écran d'accueil »). Elle fonctionne ensuite entièrement hors ligne.
 2. **L'hôte** choisit « Créer une partie » : archers, classes, niveau (coefficient), Némésis, difficulté, flèches par volée.
-3. **Connexion des téléphones** (onglet *Archers*) : l'hôte crée une invitation (QR code), l'archer la scanne depuis « Rejoindre », affiche sa réponse, que l'hôte scanne à son tour. L'archer choisit ensuite son personnage. Un code texte copiable remplace le QR si une caméra manque.
-4. **Partie** : l'hôte tire les cartes d'ordre de tour. Sur une carte Volée, l'équipe tient conseil, tire, puis chacun saisit ses impacts ; l'hôte résout. Sur une carte Némésis, elle joue une carte de colère.
+3. **Connexion des téléphones** (onglet *Archers*) : l'hôte crée une invitation (QR code), l'archer la scanne depuis « Rejoindre », affiche sa réponse, que l'hôte scanne à son tour. L'archer choisit ensuite son Gardien et découvre sa fiche de classe. Un code texte copiable remplace le QR si une caméra manque.
+4. **Partie** : un guide de phase indique à chacun ce qu'il faut faire (🃏 Carte → 🗣️ Conseil → 🏹 Tir → 🎯 Saisie → ⚔️ Résolution). L'hôte tire les cartes d'ordre de tour et fait avancer les étapes ; chaque carte, chaque résolution et chaque pouvoir s'affiche en plein écran sur tous les téléphones.
 5. **Fin de partie** : résumé, distinctions et statistiques par archer.
 
 Les archers sans téléphone sont saisis par l'hôte (onglet *Saisie*). L'hôte peut aussi corriger la saisie d'un archer connecté et annuler la dernière action.
@@ -109,7 +109,15 @@ src/
 `vite-plugin-pwa` (Workbox, `generateSW`) précache toute l'application ; le manifeste déclare un affichage `standalone` en portrait. L'écran reste allumé pendant la partie (Wake Lock API) et la narration peut être lue à voix haute (Web Speech API, voix française si disponible), réglage propre à chaque appareil.
 
 ### Saisie
-Le blason est un SVG en coordonnées normalisées : le score vaut `10 − ⌊r × 10⌋`, ce qui place naturellement le cordon dans la zone inférieure. La tolérance des traits est d'au moins 8 pixels écran de part et d'autre, pour qu'un doigt les atteigne sans viser au pixel près. Le brouillon de chaque volée survit aux changements d'onglet ; une volée envoyée reste corrigeable jusqu'à la résolution.
+Le blason est un SVG en coordonnées normalisées : le score vaut `10 − ⌊r × 10⌋`, ce qui place naturellement le cordon dans la zone inférieure. Chaque zone (anneau × quadrant) se comporte comme un bouton : un tap l'illumine entièrement et ajoute la flèche. Pas de liste d'impacts à gérer : le carquois se vide, un total par action s'affiche sous le blason, et ↶ retire la dernière flèche. La tolérance des traits est d'au moins 8 pixels écran de part et d'autre, pour qu'un doigt les atteigne sans viser au pixel près. Le brouillon de chaque volée survit aux changements d'onglet ; une volée envoyée reste corrigeable jusqu'à la résolution.
+
+### Guidage et mise en scène
+- **Étapes de volée** : l'état de jeu porte l'étape (`council`, `shoot`, `input`) ; l'hôte la fait avancer (« Au pas de tir ! », « Flèches tirées : saisie ») et les téléphones des archers basculent d'eux-mêmes sur le tableau de combat pendant le conseil, puis sur leur cible.
+- **Conseil** : `src/game/advice.ts` liste les menaces (racine sur le point d'éclore, créatures, Arbre-Cœur affaibli, pouvoirs prêts, cartes restantes) et propose à chaque archer une cible parmi ses quadrants. Ce ne sont que des suggestions : l'équipe décide.
+- **Scène plein écran** : chaque événement du moteur porte un type (`intro`, `volley`, `nemesis`, `resolve`, `round`, `power`, `victory`, `defeat`) et ses données (carte jouée, détail flèche par flèche). La scène retourne la carte, égrène les flèches une à une avec leurs dégâts, puis attend un tap ; « Passer » accélère.
+- **Retours visuels** : chiffres de dégâts et de soins flottants, portraits qui tremblent sous les coups, barres de vie avec traînée, créatures qui apparaissent, racines urgentes qui clignotent. Les animations respectent `prefers-reduced-motion`.
+- **Sons** : effets synthétisés en direct (Web Audio, aucun fichier), désactivables par 🎵 ; la lecture vocale de la narration se règle par 🗣️.
+- **Fiche de classe** : rôle, blason annoté, spécialité, action absente, pouvoir et conseils. Accessible depuis la mise en place, le choix du Gardien, l'onglet *Fiche* de l'archer, la saisie de l'hôte et les règles.
 
 ## Feuille de route
 - Mode campagne.

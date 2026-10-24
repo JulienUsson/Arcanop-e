@@ -1,6 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
+import '@fontsource/cinzel/latin-700.css';
+import '@fontsource/cinzel/latin-ext-700.css';
 import { App } from './ui/App';
 import './styles.css';
 

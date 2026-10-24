@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { GameEvent } from '../../game/types';
+import type { GameEvent, LogEntry } from '../../game/types';
 import { speak } from '../speech';
 
 export function useNarrationVoice(event: GameEvent | null) {
@@ -11,28 +11,24 @@ export function useNarrationVoice(event: GameEvent | null) {
   }, [event]);
 }
 
-export function Narration({ event }: { event: GameEvent | null }) {
-  const [openId, setOpenId] = useState<number | null>(null);
-
-  if (!event) return null;
-  const open = openId === event.id;
+export function Chronicle({ log }: { log: LogEntry[] }) {
+  const [open, setOpen] = useState(false);
+  if (log.length === 0) return null;
+  const entries = [...log].reverse().slice(0, open ? 40 : 4);
   return (
-    <section className={`narration tone-${event.tone}`}>
-      <h2>{event.title}</h2>
-      <p className="story">{event.narration}</p>
-      {event.lines.length > 0 && (
-        <>
-          <button className="link" onClick={() => setOpenId(open ? null : event.id)}>
-            {open ? 'Masquer le détail' : `Détail (${event.lines.length})`}
-          </button>
-          {open && (
-            <ul className="event-lines">
-              {event.lines.map((l, i) => (
-                <li key={i}>{l}</li>
-              ))}
-            </ul>
-          )}
-        </>
+    <section className="panel chronicle">
+      <div className="panel-title">📖 Chronique</div>
+      <ul>
+        {entries.map((e) => (
+          <li key={e.id} className={`tone-${e.tone}`}>
+            {e.text}
+          </li>
+        ))}
+      </ul>
+      {log.length > 4 && (
+        <button className="link" onClick={() => setOpen(!open)}>
+          {open ? 'Réduire' : 'Tout afficher'}
+        </button>
       )}
     </section>
   );

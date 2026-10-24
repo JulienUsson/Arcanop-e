@@ -54,7 +54,11 @@ export class HostSession {
 
   static load(): HostSession | null {
     const saved = HostSession.saved();
-    return saved ? new HostSession(saved.state, saved.claims) : null;
+    if (!saved) return null;
+    const { state } = saved;
+    if (state.phase.kind === 'volley' && !state.phase.step) state.phase.step = 'input';
+    if (state.lastEvent && !state.lastEvent.kind) state.lastEvent = null;
+    return new HostSession(state, saved.claims);
   }
 
   static saved(): Saved | null {
