@@ -1,4 +1,4 @@
-import { ACTION_LABELS, ACTIONS, actionMultiplier, CLASSES, levelFromCoef } from './classes';
+import { ACTION_LABELS, ACTIONS, actionMultiplier, CLASSES, gaugeCharge, levelFromCoef } from './classes';
 import {
   CERF_ARCHER_HEAL,
   CERF_HEAL,
@@ -686,10 +686,8 @@ function resolve(state: GameState): GameState {
       if (arrow.score === 0) player.stats.misses += 1;
       if (arrow.score === 10) player.stats.tens += 1;
       if (arrow.x) player.stats.crits += 1;
-      if (isYellow(arrow.score)) {
-        player.stats.yellows += 1;
-        player.gauge = Math.min(GAUGE_MAX, player.gauge + 1);
-      }
+      if (isYellow(arrow.score)) player.stats.yellows += 1;
+      player.gauge = Math.min(GAUGE_MAX, player.gauge + gaugeCharge(arrow, player.level));
     }
     const pool = volleyPool(arrows, player.coef);
     const weakened = isDown(player);

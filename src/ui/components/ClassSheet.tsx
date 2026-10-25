@@ -58,7 +58,7 @@ export function ClassSheet({ classId }: { classId: ClassId }) {
           {classId === 'cerf' ? `Soigne l’Arbre-Cœur de ${CERF_HEAL} PV et chaque Gardien de ${CERF_ARCHER_HEAL} PV.` : cls.powerText}
         </p>
         <p className="hint">
-          Se charge avec {GAUGE_MAX} flèches dans le jaune (9, 10 ou X), puis s’active quand vous le décidez.
+          Jauge de {GAUGE_MAX} : un 10 la charge de 1, un X de 2 ; au niveau Facile, un 9 la charge aussi de 1. Le pouvoir s’active quand vous le décidez.
         </p>
       </section>
 

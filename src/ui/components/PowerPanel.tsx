@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CLASSES } from '../../game/classes';
+import { chargeText, CLASSES } from '../../game/classes';
 import { GAUGE_MAX } from '../../game/difficulty';
 import { powerAvailability } from '../../game/engine';
 import { getCard } from '../../game/nemesis';
@@ -68,7 +68,7 @@ export function PowerPanel({ state, playerId, disabled, onActivate }: Props) {
         </button>
       )}
       {player.hp <= 0 && <p className="hint">🩹 À terre : ce pouvoir n’agira qu’à moitié.</p>}
-      <p className="hint">Chaque flèche dans le jaune remplit la jauge.</p>
+      <p className="hint">Charge de la jauge : {chargeText(player.level)}.</p>
     </section>
   );
 }

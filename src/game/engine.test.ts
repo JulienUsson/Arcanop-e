@@ -41,9 +41,9 @@ const volley = (scores: (number | 'X')[], actions: Action | (Action | null)[] = 
 describe('moteur', () => {
   it('prépare une partie mise à l’échelle', () => {
     const s = createGame(config, 1, 'g');
-    expect(s.nemesis.hp).toBe(88 * 12);
+    expect(s.nemesis.hp).toBe(160 * 12);
     expect(s.tree.hp).toBe(45);
-    expect(s.wrathDeck).toHaveLength(13);
+    expect(s.wrathDeck).toHaveLength(10);
     expect(s.phase.kind).toBe('lobby');
   });
 
@@ -62,10 +62,19 @@ describe('moteur', () => {
     expect(s.phase.kind).toBe('turn');
     expect(s.nemesis.hp).toBe(hp - 28);
     const alice = s.players[0];
-    expect(alice.gauge).toBe(2);
+    expect(alice.gauge).toBe(1);
     expect(alice.stats.misses).toBe(1);
     expect(alice.stats.totalScore).toBe(19);
     expect(alice.stats.damageNemesis).toBe(28);
+  });
+
+  it('charge la jauge selon le niveau de l’archer, le X compte double', () => {
+    let s = drawUntil(started(), 'volley');
+    s = reduce(s, { type: 'submit', playerId: 'a', submission: volley([9, 9, 8]) });
+    s = reduce(s, { type: 'submit', playerId: 'b', submission: volley(['X', 10, 9]) });
+    s = reduce(s, { type: 'submit', playerId: 'd', submission: volley([9, 10, 8]) });
+    s = reduce(s, { type: 'resolve' });
+    expect(s.players.map((p) => p.gauge)).toEqual([0, GAUGE_MAX, 0, 2]);
   });
 
   it('compte le X comme un coup critique', () => {
@@ -273,7 +282,7 @@ describe('moteur', () => {
     s.roots = [{ uid: 'r1', cardId: 'racine-etrangleuse', hp: 20, maxHp: 20, countdown: 1 }];
     s = reduce(s, { type: 'draw' });
     expect(s.roots).toHaveLength(0);
-    expect(s.tree.hp).toBe(45 - Math.round(14 * treeDamageFactor(config)));
+    expect(s.tree.hp).toBe(45 - Math.floor(14 * treeDamageFactor(config)));
     expect(s.round).toBe(2);
   });
 

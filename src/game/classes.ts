@@ -134,12 +134,13 @@ export interface ArcherLevelDef {
   label: string;
   coef: number;
   favorableCordon: boolean;
+  chargeFrom: number;
 }
 
 export const ARCHER_LEVELS: Record<ArcherLevel, ArcherLevelDef> = {
-  facile: { id: 'facile', label: 'Facile', coef: 1.2, favorableCordon: true },
-  normal: { id: 'normal', label: 'Normal', coef: 1, favorableCordon: false },
-  difficile: { id: 'difficile', label: 'Difficile', coef: 0.8, favorableCordon: false },
+  facile: { id: 'facile', label: 'Facile', coef: 1.2, favorableCordon: true, chargeFrom: 9 },
+  normal: { id: 'normal', label: 'Normal', coef: 1, favorableCordon: false, chargeFrom: 10 },
+  difficile: { id: 'difficile', label: 'Difficile', coef: 0.8, favorableCordon: false, chargeFrom: 10 },
 };
 
 export const ARCHER_LEVEL_IDS: ArcherLevel[] = ['facile', 'normal', 'difficile'];
@@ -152,4 +153,15 @@ export function levelFromCoef(coef: number): ArcherLevel {
 
 export function levelText(player: { level: ArcherLevel; coef: number }): string {
   return `${ARCHER_LEVELS[player.level].label} ×${String(player.coef).replace('.', ',')}`;
+}
+
+export const CRIT_CHARGE = 2;
+
+export function gaugeCharge(arrow: { score: number; x: boolean }, level: ArcherLevel): number {
+  if (arrow.x) return CRIT_CHARGE;
+  return arrow.score >= ARCHER_LEVELS[level].chargeFrom ? 1 : 0;
+}
+
+export function chargeText(level: ArcherLevel): string {
+  return ARCHER_LEVELS[level].chargeFrom === 9 ? '9 et 10 : +1, X : +2' : '10 : +1, X : +2';
 }
