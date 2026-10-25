@@ -1,3 +1,4 @@
+import { GAUGE_MAX } from '../../game/difficulty';
 import { ACTION_ICONS, ACTION_LABELS, CLASS_IDS, SPECIALTY_MULTIPLIER } from '../../game/classes';
 import { CRIT_POINTS } from '../../game/target';
 import { MORDELUNE } from '../../game/nemesis';
@@ -32,8 +33,8 @@ export function Rules({ onBack }: { onBack: () => void }) {
             a aussi une action absente.
           </li>
           <li>
-            La jauge a autant de cases que de flèches par volée. Elle se charge de 1 sur un 10 et de 2 sur un X ; au niveau Facile, un 9 la
-            charge aussi de 1. Pleine, le pouvoir de l’esprit s’active.
+            La jauge se charge de 1 sur un 10 et de 2 sur un X ; au niveau Facile, un 9 la charge aussi de 1. À {GAUGE_MAX}, le pouvoir de l’esprit
+            s’active.
           </li>
         </ul>
       </section>
@@ -80,13 +81,13 @@ export function Rules({ onBack }: { onBack: () => void }) {
         <div className="panel-title">Créatures ou racines ?</div>
         <ul>
           <li>
-            {ACTION_ICONS.creatures} <strong>Créatures</strong> : une menace <em>continue</em>. Elles restent en jeu et agissent à chaque fin
-            de manche (blesser l’Arbre-Cœur, soigner la Némésis, vider les jauges) tant qu’on ne les abat pas. Plus tôt elles tombent,
+            {ACTION_ICONS.creatures} <strong>Créatures</strong> : une menace <em>continue</em>. Elles restent en jeu et agissent à chaque tour
+            de la Némésis (blesser l’Arbre-Cœur, soigner la Némésis, vider les jauges) tant qu’on ne les abat pas. Plus tôt elles tombent,
             moins elles coûtent. Spécialité de l’Ours.
           </li>
           <li>
             {ACTION_ICONS.roots} <strong>Racines</strong> : une menace <em>à retardement</em>. Elles ne font rien pendant leur compte à
-            rebours ⏳, puis éclosent d’un coup en fin de manche (gros dégâts, gros soin pour la Némésis, invocation) et disparaissent. Il faut
+            rebours ⏳, puis éclosent d’un coup à un tour de la Némésis (gros dégâts, gros soin pour la Némésis, invocation) et disparaissent. Il faut
             les détruire avant la fin du compte. Spécialité du Hibou ; l’Ours peut en retarder une.
           </li>
         </ul>
@@ -104,13 +105,20 @@ export function Rules({ onBack }: { onBack: () => void }) {
         <NemesisSheet nemesisId={MORDELUNE.id} />
       </section>
       <section className="panel">
-        <div className="panel-title">Une manche</div>
+        <div className="panel-title">Volée et riposte</div>
         <ol>
-          <li>Un paquet d’ordre de tour est mélangé : des cartes Volée 🏹 et des cartes Némésis 💀.</li>
-          <li>Carte Volée : 🏹 conseil autour du tableau de combat puis tir réel, 🎯 saisie des scores et assignation des flèches, ⚔️ résolution par l’hôte.</li>
-          <li>Carte Némésis : elle joue une carte de son paquet de colère (attaque, créature ou racine).</li>
-          <li>Fin de manche : chaque créature agit et le compte à rebours des racines diminue.</li>
+          <li>🏹 Volée : conseil autour du tableau de combat puis tir réel, 🎯 saisie des scores et assignation des flèches, ⚔️ résolution par l’hôte.</li>
+          <li>
+            💀 Riposte : l’hôte révèle une carte du paquet de colère (attaque, créature ou racine). Puis chaque créature agit et le compte à
+            rebours de chaque racine diminue : c’est un tour de la Némésis.
+          </li>
+          <li>Une créature ou une racine qui vient d’arriver n’agit qu’à partir du tour suivant : vous avez toujours une volée pour réagir.</li>
+          <li>En volées de 6 flèches, la riposte compte deux tours de la Némésis : deux cartes, les créatures agissent deux fois.</li>
         </ol>
+        <p>
+          🤖 <strong>Compagnons</strong> : la partie est équilibrée pour quatre Gardiens. À moins de quatre, des compagnons complètent
+          l’équipe. L’appli tire leurs flèches, l’hôte les répartit entre leurs actions comme pour un archer.
+        </p>
         <p>
           Victoire si la Némésis tombe à 0 PV. Défaite si l’Arbre-Cœur tombe à 0 PV.
         </p>

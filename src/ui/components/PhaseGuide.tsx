@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { councilAdvice, describeSuggestion, suggestion } from '../../game/advice';
 import { ARCHER_LEVELS } from '../../game/classes';
+import { getNemesis } from '../../game/nemesis';
 import type { GameState } from '../../game/types';
 
 interface Props {
@@ -12,16 +13,17 @@ interface Props {
 }
 
 const STEPS = [
-  { id: 'card', icon: '🃏', label: 'Carte' },
   { id: 'council', icon: '🏹', label: 'Conseil & tir' },
   { id: 'input', icon: '🎯', label: 'Saisie' },
   { id: 'resolve', icon: '⚔️', label: 'Résolution' },
+  { id: 'nemesis', icon: '💀', label: 'Riposte' },
 ];
 
 function currentStep(state: GameState): string {
   const phase = state.phase;
   if (phase.kind === 'volley') return phase.step;
-  return 'card';
+  if (phase.kind === 'nemesis') return 'nemesis';
+  return 'council';
 }
 
 function texts(state: GameState, role: 'host' | 'guest', playerId?: string | null): { title: string; text: string } {
@@ -32,16 +34,16 @@ function texts(state: GameState, role: 'host' | 'guest', playerId?: string | nul
       ? { title: 'Rassemblez les Gardiens', text: 'Connectez les téléphones des archers, puis lancez la partie.' }
       : { title: 'Rassemblement', text: 'L’hôte va bientôt lancer la partie.' };
   }
-  if (phase.kind === 'turn') {
-    const ending = state.turnDeck.length === 0;
-    if (role === 'guest') {
-      return ending
-        ? { title: 'Fin de manche', text: 'Les créatures vont agir et les racines grandir…' }
-        : { title: 'Prochaine carte', text: 'L’hôte révèle la prochaine carte d’ordre de tour.' };
-    }
-    return ending
-      ? { title: 'Fin de la manche', text: 'Les créatures agissent, les racines se rapprochent de l’éclosion, puis un nouvel ordre de tour est mélangé.' }
-      : { title: 'Révélez la prochaine carte', text: 'Volée : les archers tirent. Némésis : elle joue une carte de colère.' };
+  if (phase.kind === 'nemesis') {
+    const name = getNemesis(state.config.nemesisId).name;
+    const count = phase.total > 1 ? ` (${phase.drawn + 1}/${phase.total})` : '';
+    const card = state.wrathDeck.length > 0 ? 'une carte de colère' : 'un Déchaînement de sa Furie';
+    return role === 'guest'
+      ? { title: `Riposte de ${name}${count}`, text: `L’hôte révèle ${card}. Ses créatures agissent et ses racines grandissent.` }
+      : {
+          title: `Riposte de ${name}${count}`,
+          text: `Révélez ${card} : elle prend effet, puis les créatures agissent et les racines grandissent. La volée suivante commence ensuite.`,
+        };
   }
   if (phase.kind === 'volley') {
     const me = state.players.find((p) => p.id === playerId);

@@ -219,7 +219,7 @@ export class HostSession {
         break;
       }
       case 'claim': {
-        if (!conn.token || !this.state.players.some((p) => p.id === msg.playerId)) return;
+        if (!conn.token || !this.state.players.some((p) => p.id === msg.playerId && !p.bot)) return;
         const holder = this.claims[msg.playerId];
         if (holder && holder !== conn.token && this.connected(holder)) {
           this.send(conn, { t: 'notice', message: 'Cet archer est déjà pris par un autre téléphone.' });

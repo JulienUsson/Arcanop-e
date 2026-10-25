@@ -457,29 +457,9 @@ textarea {
   align-items: center;
 }
 
-.turn-cards {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.turn-card {
-  width: 26px;
-  height: 34px;
-  border-radius: 5px;
-  display: grid;
-  place-items: center;
-  font-size: 0.9rem;
-  border: 1px solid var(--border);
-  background: var(--bg-2);
-}
-
-.turn-card.hidden {
-  background: repeating-linear-gradient(45deg, #2a4433, #2a4433 4px, #22382a 4px, #22382a 8px);
-  color: transparent;
-}
-
-.turn-card.played.nemesis {
-  border-color: #6a2f45;
+.turn-next {
+  color: var(--muted);
+  font-size: 0.8rem;
 }
 
 .wrath-info {
@@ -1559,14 +1539,6 @@ button.pulse:not(:disabled) {
   50% {
     box-shadow: 0 0 18px rgba(226, 96, 106, 0.8);
   }
-}
-
-.turn-card {
-  transition: transform 0.3s ease;
-}
-
-.turn-card.played {
-  animation: summon 0.4s ease-out;
 }
 
 .wrath-info {
@@ -3621,6 +3593,25 @@ button.danger-solid {
 .status.down {
   color: #ffb3bb;
   background: rgba(226, 96, 106, 0.2);
+}
+
+.status.bot {
+  color: #b8d8ff;
+  background: rgba(120, 170, 230, 0.16);
+}
+
+.bot-row .bot-name {
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.bot-shots {
+  font-size: 0.85rem;
+  color: #b8d8ff;
+}
+
+.bot-wait {
+  padding: 1.5rem 0.5rem;
 }
 
 .me .me-info {

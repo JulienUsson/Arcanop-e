@@ -1,6 +1,7 @@
 import { it } from 'vitest';
 import { actionMultiplier } from './classes';
 import { createGame, powerAvailability, reduce } from './engine';
+import { withBots } from './team';
 import type { Action, ClassId, Difficulty, GameConfig, GameState, Submission } from './types';
 
 interface Rng {
@@ -44,15 +45,19 @@ function simulate(difficulty: Difficulty, classes: ClassId[], mean: number, game
   let knockouts = 0;
   for (let game = 0; game < games; game++) {
     const rng = { value: game * 7919 + 1 };
+    let ids = 0;
     const config: GameConfig = {
       nemesisId: 'mordelune',
       difficulty,
       arrowsPerVolley: arrows,
-      players: classes.map((classId, i) => ({ id: `p${i}`, name: `P${i}`, classId, level: 'normal', coef: 1 })),
+      players: withBots(
+        classes.map((classId, i) => ({ id: `p${i}`, name: `P${i}`, classId, level: 'normal', coef: 1 })),
+        () => String(ids++),
+      ),
     };
     let s = reduce(createGame(config, game + 1, 'sim'), { type: 'start' });
     while (s.phase.kind !== 'over') {
-      if (s.phase.kind === 'turn') {
+      if (s.phase.kind === 'nemesis') {
         s = reduce(s, { type: 'draw' });
         continue;
       }
@@ -84,8 +89,8 @@ function teams(size: number): ClassId[][] {
   return size <= 4 ? subsets(size) : subsets(size - 4).map((extra) => [...CLASS_IDS, ...extra]);
 }
 
-function bySize(difficulty: Difficulty, arrows: number): string {
-  const cells = [1, 2, 3, 4, 5, 6, 8].map((size) => {
+function bySize(difficulty: Difficulty, arrows: number, sizes = [1, 2, 3, 4, 5, 6, 8]): string {
+  const cells = sizes.map((size) => {
     const rates = teams(size).map((team) => Number(simulate(difficulty, team, 8, 40, arrows).match(/: (\d+)% victoires/)![1]));
     return `${size}j ${String(Math.round(rates.reduce((a, b) => a + b, 0) / rates.length)).padStart(3)}%`;
   });

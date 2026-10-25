@@ -1,5 +1,5 @@
 import { DIFFICULTIES, FURY_ARCHERS_BASE, FURY_ARCHERS_STEP, FURY_TREE_BASE, FURY_TREE_STEP } from '../../game/difficulty';
-import { arrowSlots, describeCard, nextFury, scaleFactor, teamHpFactor } from '../../game/engine';
+import { describeCard, nemesisActions, nemesisMaxHp, nextFury, scaleFactor } from '../../game/engine';
 import { getNemesis } from '../../game/nemesis';
 import type { CorruptionCard, GameConfig, GameState } from '../../game/types';
 
@@ -11,8 +11,8 @@ interface Props {
 
 const TYPES: { type: CorruptionCard['type']; label: string; icon: string; help: string }[] = [
   { type: 'attack', label: 'Attaques', icon: '🗡️', help: 'Effet immédiat, puis la carte est défaussée.' },
-  { type: 'creature', label: 'Créatures', icon: '🐾', help: 'Restent en jeu et agissent à chaque fin de manche.' },
-  { type: 'root', label: 'Racines', icon: '🌿', help: 'Comptent à rebours et éclosent en fin de manche si elles survivent.' },
+  { type: 'creature', label: 'Créatures', icon: '🐾', help: 'Restent en jeu et agissent à chaque tour de la Némésis, à partir du suivant.' },
+  { type: 'root', label: 'Racines', icon: '🌿', help: 'Comptent à rebours à chaque tour de la Némésis et éclosent à zéro si elles survivent.' },
 ];
 
 const TIERS = ['', 'I', 'II', 'III'];
@@ -28,7 +28,7 @@ export function NemesisSheet({ nemesisId, config, state }: Props) {
   const nemesis = getNemesis(nemesisId);
   const cfg = state?.config ?? config;
   const diff = cfg ? DIFFICULTIES[cfg.difficulty] : null;
-  const maxHp = state?.nemesis.maxHp ?? (cfg && diff ? Math.floor(diff.nemesisHpPerArrow * arrowSlots(cfg) * teamHpFactor(cfg)) : null);
+  const maxHp = state?.nemesis.maxHp ?? (cfg ? nemesisMaxHp(cfg) : null);
   const deckSize = diff ? diff.tiers.reduce((a, b) => a + b, 0) : null;
   const scale = cfg ? scaleFactor(cfg) : 1;
 
@@ -58,12 +58,10 @@ export function NemesisSheet({ nemesisId, config, state }: Props) {
               <span className="stat-label">cartes de colère</span>
             </div>
           )}
-          {diff && (
+          {cfg && (
             <div className="stat">
-              <span className="stat-value">
-                {diff.volleyCards}🏹 {diff.nemesisCards}💀
-              </span>
-              <span className="stat-label">par manche</span>
+              <span className="stat-value">{nemesisActions(cfg)}💀</span>
+              <span className="stat-label">carte{nemesisActions(cfg) > 1 ? 's' : ''} après chaque volée</span>
             </div>
           )}
         </section>

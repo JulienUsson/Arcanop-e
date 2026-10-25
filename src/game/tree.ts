@@ -7,7 +7,7 @@ export const HEART_TREE = {
     'On raconte que chaque Gardien a gravé son nom dans son écorce le jour où il a bandé son premier arc. Quand la Corruption approche, les noms s’illuminent un à un : c’est l’Arbre qui appelle ses défenseurs.',
   threats: [
     'Les attaques de la Némésis le frappent directement.',
-    'Les créatures en jeu le blessent à chaque fin de manche.',
+    'Les créatures en jeu le blessent à chaque tour de la Némésis.',
     'Une racine qui éclot lui inflige un coup terrible.',
   ],
   care: [

@@ -10,7 +10,7 @@ export const MORDELUNE: NemesisDef = {
   tips: [
     'Sa colère se joue en trois niveaux : les cartes deviennent plus dangereuses à mesure que le paquet s’amenuise.',
     'Une racine qui éclot fait très mal : détruisez-la avant la fin de son compte à rebours, ou retardez-la avec l’Ours.',
-    'Les créatures agissent à chaque fin de manche : plus tôt elles tombent, moins elles coûtent.',
+    'Les créatures agissent à chaque tour de la Némésis : plus tôt elles tombent, moins elles coûtent.',
     'Certaines de ses attaques et créatures visent les Gardiens : un archer à terre ne tire plus qu’à moitié, soignez-le.',
     'La Mère-Sève et la Racine Sanguine la soignent : ne les laissez pas effacer vos efforts.',
     'Quand son paquet de colère est vide, elle entre en Furie finale : chaque tour de Némésis devient un Déchaînement de plus en plus violent contre l’Arbre-Cœur et tous les Gardiens.',
@@ -226,18 +226,3 @@ export function getCard(nemesisId: string, cardId: string): CorruptionCard {
   if (!card) throw new Error(`Carte inconnue : ${cardId}`);
   return card;
 }
-
-export const VOLLEY_NARRATIONS = [
-  'Les Gardiens encochent leurs flèches. Le vent retient son souffle.',
-  'Les esprits animaux murmurent à l’oreille des archers. C’est le moment de frapper.',
-  'Les cordes se tendent dans le silence de la Lisière.',
-  'Un rayon de lune perce les branches et éclaire les blasons. Tirez !',
-  'L’Arbre-Cœur pulse doucement : il compte sur vous.',
-  'Les feuilles frissonnent. Chaque flèche porte l’espoir de la forêt.',
-];
-
-export const ROUND_NARRATIONS = [
-  'La manche s’achève. La Corruption s’agite dans l’ombre.',
-  'La lune glisse derrière les nuages. Les serviteurs de la Ronce passent à l’action.',
-  'Un frisson parcourt la forêt : la Corruption gagne du terrain.',
-];

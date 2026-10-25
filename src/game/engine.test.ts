@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { createGame, gaugeMax, nextFury, powerAvailability, reduce, treeDamageFactor, volleyPool } from './engine';
+import { createGame, nemesisActions, nextFury, powerAvailability, reduce, treeDamageFactor, volleyPool } from './engine';
+import { withBots } from './team';
+import { GAUGE_MAX } from './difficulty';
 import { availableActions } from './classes';
 import type { Action, Arrow, GameConfig, GameState, Submission } from './types';
 
@@ -19,16 +21,11 @@ function started(seed = 42): GameState {
   return reduce(createGame(config, seed, 'g'), { type: 'start' });
 }
 
-function drawUntil(state: GameState, kind: 'volley' | 'nemesis'): GameState {
-  let s = state;
-  for (let i = 0; i < 50; i++) {
-    if (s.phase.kind === 'volley') s = reduce(s, { type: 'resolve' });
-    if (s.phase.kind !== 'turn') throw new Error('phase inattendue');
-    const next = s.turnDeck[0];
-    s = reduce(s, { type: 'draw' });
-    if (next === kind) return s;
-  }
-  throw new Error('carte introuvable');
+function riposte(state: GameState, cards: string[]): GameState {
+  const s = structuredClone(state);
+  s.wrathDeck = cards;
+  s.phase = { kind: 'nemesis', drawn: 0, total: nemesisActions(s.config) };
+  return s;
 }
 
 const arrow = (score: number | 'X', action: Action | null = null): Arrow =>
@@ -38,41 +35,75 @@ const volley = (scores: (number | 'X')[], actions: Action | (Action | null)[] = 
 });
 
 describe('moteur', () => {
-  it('prépare une partie mise à l’échelle', () => {
+  it('prépare une partie pour quatre Gardiens', () => {
     const s = createGame(config, 1, 'g');
-    expect(s.nemesis.hp).toBe(160 * 12);
+    expect(s.nemesis.hp).toBe(1600);
     expect(s.tree.hp).toBe(45);
-    expect(s.wrathDeck).toHaveLength(10);
+    expect(s.wrathDeck).toHaveLength(14);
     expect(s.phase.kind).toBe('lobby');
   });
 
-  it('adapte la Némésis, l’Arbre-Cœur et la jauge à l’équipe', () => {
-    const duo: GameConfig = { ...config, players: config.players.slice(0, 2), arrowsPerVolley: 6 };
-    const s = createGame(duo, 1, 'g');
-    expect(s.nemesis.hp).toBe(Math.floor(160 * 12 * 0.72));
-    expect(s.tree.hp).toBe(45);
-    expect(gaugeMax(duo)).toBe(6);
-    const solo = createGame({ ...config, players: config.players.slice(0, 1) }, 1, 'g');
-    expect(solo.nemesis.hp).toBe(Math.floor(160 * 3 * 0.5));
-    expect(solo.tree.hp).toBe(Math.round(45 * 0.7));
-    const big = createGame({ ...config, players: [...config.players, ...config.players.map((p) => ({ ...p, id: `${p.id}2` }))], arrowsPerVolley: 6 }, 1, 'g');
-    expect(big.nemesis.hp).toBe(Math.floor(160 * 48 * 1.29));
-    expect(big.tree.hp).toBe(Math.round(45 * 1.5));
+  it('complète l’équipe avec des compagnons jusqu’à quatre', () => {
+    let n = 0;
+    const players = withBots(config.players.slice(0, 2), () => String(n++));
+    expect(players).toHaveLength(4);
+    expect(players.filter((p) => p.bot).map((p) => p.classId)).toEqual(['hibou', 'cerf']);
+    expect(withBots(config.players, () => 'x').some((p) => p.bot)).toBe(false);
+    const s = createGame({ ...config, players }, 1, 'g');
+    expect(s.nemesis.hp).toBe(1600);
   });
 
-  it('mélange un paquet d’ordre de tour par manche', () => {
-    const s = started();
-    expect(s.round).toBe(1);
-    expect(s.turnDeck.filter((c) => c === 'volley')).toHaveLength(3);
-    expect(s.turnDeck.filter((c) => c === 'nemesis')).toHaveLength(2);
+  it('adapte la Némésis au format et aux grandes équipes', () => {
+    expect(createGame({ ...config, arrowsPerVolley: 6 }, 1, 'g').nemesis.hp).toBe(Math.floor(1600 * 0.9));
+    const eight = [...config.players, ...config.players.map((p) => ({ ...p, id: `${p.id}2` }))];
+    const big = createGame({ ...config, players: eight }, 1, 'g');
+    expect(big.nemesis.hp).toBe(Math.floor(1600 * 2 * 1.37));
+    expect(big.tree.hp).toBe(Math.round(45 * 1.5));
+    expect(createGame({ ...config, players: eight, arrowsPerVolley: 6 }, 1, 'g').nemesis.hp).toBe(Math.floor(1600 * 2 * 1.65 * 0.9));
+  });
+
+  it('alterne volée et riposte de la Némésis', () => {
+    let s = started();
+    expect(s.phase).toMatchObject({ kind: 'volley', volley: 1 });
+    const deck = s.wrathDeck.length;
+    s = reduce(s, { type: 'resolve' });
+    expect(s.phase).toMatchObject({ kind: 'nemesis', drawn: 0, total: 1 });
+    s = reduce(s, { type: 'draw' });
+    expect(s.wrathDeck).toHaveLength(deck - 1);
+    expect(s.lastEvent?.cardId).toBe(started().wrathDeck[0]);
+    expect(s.phase).toMatchObject({ kind: 'volley', volley: 2 });
+  });
+
+  it('double la riposte en volées de six flèches', () => {
+    let s = reduce(reduce(createGame({ ...config, arrowsPerVolley: 6 }, 7, 'g'), { type: 'start' }), { type: 'resolve' });
+    expect(s.phase).toMatchObject({ kind: 'nemesis', drawn: 0, total: 2 });
+    s = reduce(s, { type: 'draw' });
+    expect(s.phase).toMatchObject({ kind: 'nemesis', drawn: 1, total: 2 });
+    expect(s.lastEvent?.title).toMatch(/\(1\/2\)$/);
+    s = reduce(s, { type: 'draw' });
+    expect(s.phase).toMatchObject({ kind: 'volley', volley: 2 });
+  });
+
+  it('tire les flèches des compagnons et laisse le joueur les répartir', () => {
+    let n = 0;
+    const players = withBots(config.players.slice(0, 1), () => String(n++));
+    let s = reduce(createGame({ ...config, players }, 5, 'g'), { type: 'start' });
+    if (s.phase.kind !== 'volley') throw new Error('volée attendue');
+    const bot = players.find((p) => p.bot)!;
+    const shots = s.phase.bots[bot.id];
+    expect(shots).toHaveLength(3);
+    expect(Object.keys(s.phase.bots)).toHaveLength(3);
+    s = reduce(s, { type: 'submit', playerId: bot.id, submission: volley([0, 0, 0], ['heal', 'heal', 'heal']) });
+    if (s.phase.kind !== 'volley') throw new Error('volée attendue');
+    expect(s.phase.submissions[bot.id].arrows.map((a) => [a.score, a.x])).toEqual(shots.map((a) => [a.score, a.x]));
   });
 
   it('additionne la volée, applique la spécialité et remplit les jauges', () => {
-    let s = drawUntil(started(), 'volley');
+    let s = started();
     const hp = s.nemesis.hp;
     s = reduce(s, { type: 'submit', playerId: 'a', submission: volley([10, 9, 0], 'nemesis') });
     s = reduce(s, { type: 'resolve' });
-    expect(s.phase.kind).toBe('turn');
+    expect(s.phase.kind).toBe('nemesis');
     expect(s.nemesis.hp).toBe(hp - 28);
     const alice = s.players[0];
     expect(alice.gauge).toBe(1);
@@ -82,18 +113,18 @@ describe('moteur', () => {
   });
 
   it('charge la jauge selon le niveau de l’archer, le X compte double', () => {
-    let s = drawUntil(started(), 'volley');
+    let s = started();
     s = reduce(s, { type: 'submit', playerId: 'a', submission: volley([9, 9, 8]) });
     s = reduce(s, { type: 'submit', playerId: 'b', submission: volley(['X', 10, 9]) });
     s = reduce(s, { type: 'submit', playerId: 'd', submission: volley([9, 10, 8]) });
     s = reduce(s, { type: 'resolve' });
-    expect(s.players.map((p) => p.gauge)).toEqual([0, gaugeMax(config), 0, 2]);
+    expect(s.players.map((p) => p.gauge)).toEqual([0, GAUGE_MAX, 0, 2]);
   });
 
   it('compte le X comme un coup critique', () => {
     expect(volleyPool([arrow('X'), arrow(7)], 1)).toBe(22);
     expect(volleyPool([arrow('X'), arrow(7)], 1.5)).toBe(33);
-    let s = drawUntil(started(), 'volley');
+    let s = started();
     s = reduce(s, { type: 'submit', playerId: 'a', submission: volley(['X', 7, 3]) });
     s = reduce(s, { type: 'resolve' });
     const alice = s.players[0];
@@ -102,7 +133,7 @@ describe('moteur', () => {
   });
 
   it('répartit les flèches entre les actions disponibles', () => {
-    let s = drawUntil(started(), 'volley');
+    let s = started();
     s = { ...s, tree: { hp: 20, maxHp: 45 } };
     const hp = s.nemesis.hp;
     s = reduce(s, { type: 'submit', playerId: 'b', submission: volley([8, 8, 5], ['nemesis', 'heal', 'roots']) });
@@ -113,7 +144,7 @@ describe('moteur', () => {
   });
 
   it('ne donne aucune action à une flèche hors cible', () => {
-    let s = drawUntil(started(), 'volley');
+    let s = started();
     s = reduce(s, { type: 'submit', playerId: 'a', submission: { arrows: [{ score: 0, x: true, action: 'nemesis' }, { score: 7, x: true, action: null }] } });
     expect(s.phase.kind === 'volley' && s.phase.submissions.a.arrows).toEqual([
       { score: 0, x: false, action: null },
@@ -122,16 +153,16 @@ describe('moteur', () => {
   });
 
   it('enchaîne le conseil et tir puis la saisie', () => {
-    let s = drawUntil(started(), 'volley');
+    let s = started();
     expect(s.phase).toMatchObject({ kind: 'volley', step: 'council' });
-    expect(s.lastEvent?.kind).toBe('volley');
+    expect(s.lastEvent?.kind).toBe('intro');
     s = reduce(s, { type: 'advance' });
     expect(s.phase).toMatchObject({ step: 'input' });
     expect(reduce(s, { type: 'advance' })).toBe(s);
   });
 
   it('détaille chaque volée dans l’événement de résolution', () => {
-    let s = drawUntil(started(), 'volley');
+    let s = started();
     s = reduce(s, { type: 'submit', playerId: 'a', submission: volley([9, 0], 'nemesis') });
     s = reduce(s, { type: 'resolve' });
     expect(s.lastEvent?.kind).toBe('resolve');
@@ -146,7 +177,7 @@ describe('moteur', () => {
   });
 
   it('applique le coefficient et le facteur de soin', () => {
-    let s = drawUntil(started(), 'volley');
+    let s = started();
     s = { ...s, tree: { hp: 10, maxHp: 45 } };
     s = reduce(s, { type: 'submit', playerId: 'd', submission: volley([8], 'heal') });
     s = reduce(s, { type: 'resolve' });
@@ -154,7 +185,7 @@ describe('moteur', () => {
   });
 
   it('redirige vers la Némésis faute de créature', () => {
-    let s = drawUntil(started(), 'volley');
+    let s = started();
     const hp = s.nemesis.hp;
     s = reduce(s, { type: 'submit', playerId: 'b', submission: volley([7], 'creatures') });
     s = reduce(s, { type: 'resolve' });
@@ -162,7 +193,7 @@ describe('moteur', () => {
   });
 
   it('frappe la créature visée par la flèche puis déborde', () => {
-    let s = drawUntil(started(), 'volley');
+    let s = started();
     s = structuredClone(s);
     s.creatures = [
       { uid: 'c1', cardId: 'loup-ronce', hp: 5, maxHp: 18 },
@@ -175,7 +206,7 @@ describe('moteur', () => {
   });
 
   it('vise une cible par flèche et choisit la plus faible par défaut', () => {
-    let s = drawUntil(started(), 'volley');
+    let s = started();
     s = structuredClone(s);
     s.creatures = [
       { uid: 'c1', cardId: 'loup-ronce', hp: 18, maxHp: 18 },
@@ -204,9 +235,9 @@ describe('moteur', () => {
   });
 
   it('active les pouvoirs', () => {
-    let s = drawUntil(started(), 'volley');
+    let s = started();
     s = structuredClone(s);
-    s.players.forEach((p) => (p.gauge = gaugeMax(config)));
+    s.players.forEach((p) => (p.gauge = GAUGE_MAX));
     s.roots = [{ uid: 'r1', cardId: 'racine-etrangleuse', hp: 20, maxHp: 20, countdown: 1 }];
     s.tree.hp = 20;
     expect(powerAvailability(s, 'a').ok).toBe(true);
@@ -227,7 +258,7 @@ describe('moteur', () => {
   });
 
   it('donne des PV aux archers et divise par deux les effets d’un archer à terre', () => {
-    let s = drawUntil(started(), 'volley');
+    let s = started();
     expect(s.players.map((p) => p.hp)).toEqual([15, 15, 15, 15]);
     s = structuredClone(s);
     s.players[0].hp = 0;
@@ -238,7 +269,7 @@ describe('moteur', () => {
   });
 
   it('soigne un archer avec une flèche de soin et le relève', () => {
-    let s = drawUntil(started(), 'volley');
+    let s = started();
     s = structuredClone(s);
     s.players[0].hp = 0;
     s = reduce(s, { type: 'submit', playerId: 'd', submission: { arrows: [{ ...arrow(8, 'heal'), target: 'a' }] } });
@@ -249,10 +280,10 @@ describe('moteur', () => {
   });
 
   it('affaiblit le pouvoir d’un archer à terre', () => {
-    let s = drawUntil(started(), 'volley');
+    let s = started();
     s = structuredClone(s);
     s.players.forEach((p) => {
-      p.gauge = gaugeMax(config);
+      p.gauge = GAUGE_MAX;
       p.hp = 0;
     });
     s.tree.hp = 10;
@@ -264,9 +295,7 @@ describe('moteur', () => {
   });
 
   it('fait frapper un archer au hasard ou tous les archers', () => {
-    let s = started();
-    s = structuredClone(s);
-    s.turnDeck = [];
+    let s = riposte(started(), ['rampeur-mousse']);
     s.creatures = [
       { uid: 'c1', cardId: 'loup-ronce', hp: 18, maxHp: 18 },
       { uid: 'c2', cardId: 'cerf-corrompu', hp: 34, maxHp: 34 },
@@ -279,39 +308,35 @@ describe('moteur', () => {
     expect(s.players[1].stats.knockouts).toBe(1);
   });
 
-  it('fait jouer une carte de colère sur une carte Némésis', () => {
-    let s = started();
-    const deck = s.wrathDeck.length;
-    s = drawUntil(s, 'nemesis');
-    expect(s.wrathDeck).toHaveLength(deck - 1);
-    expect(s.lastEvent?.title).toMatch(/Attaque|Créature|Racine/);
-    expect(s.lastEvent?.cardId).toBe(started().wrathDeck[0]);
+  it('laisse un tour de répit aux créatures et racines qui arrivent', () => {
+    let s = riposte(started(), ['loup-ronce']);
+    s = reduce(s, { type: 'draw' });
+    expect(s.creatures).toHaveLength(1);
+    expect(s.creatures[0].fresh).toBeUndefined();
+    expect(s.players.every((p) => p.hp === p.maxHp)).toBe(true);
+    s = riposte(started(), ['racine-etrangleuse']);
+    s = reduce(s, { type: 'draw' });
+    expect(s.roots[0].countdown).toBe(2);
   });
 
-  it('déclenche les racines en fin de manche', () => {
-    let s = started();
-    s = structuredClone(s);
-    s.turnDeck = [];
+  it('fait éclore les racines au tour de la Némésis', () => {
+    let s = riposte(started(), ['rampeur-mousse']);
     s.roots = [{ uid: 'r1', cardId: 'racine-etrangleuse', hp: 20, maxHp: 20, countdown: 1 }];
     s = reduce(s, { type: 'draw' });
     expect(s.roots).toHaveLength(0);
     expect(s.tree.hp).toBe(45 - Math.floor(14 * treeDamageFactor(config)));
-    expect(s.round).toBe(2);
   });
 
   it('déclenche une Furie finale de plus en plus forte quand le paquet est vide', () => {
-    let s = started();
-    s = structuredClone(s);
-    s.wrathDeck = [];
-    s.turnDeck = ['nemesis', 'nemesis'];
+    let s = riposte(started(), []);
     expect(nextFury(s)).toEqual({ level: 1, tree: Math.floor(10 * treeDamageFactor(config)), archers: 3 });
     s = reduce(s, { type: 'draw' });
-    expect(s.phase.kind).toBe('turn');
+    expect(s.phase.kind).toBe('volley');
     expect(s.fury).toBe(1);
     expect(s.lastEvent).toMatchObject({ kind: 'fury', fury: 1 });
     expect(s.tree.hp).toBe(45 - Math.floor(10 * treeDamageFactor(config)));
     expect(s.players.map((p) => p.hp)).toEqual([12, 12, 12, 12]);
-    s = { ...s, tree: { hp: 45, maxHp: 45 } };
+    s = riposte({ ...s, tree: { hp: 45, maxHp: 45 } }, []);
     s = reduce(s, { type: 'draw' });
     expect(s.fury).toBe(2);
     expect(s.tree.hp).toBe(45 - Math.floor(16 * treeDamageFactor(config)));
@@ -319,17 +344,14 @@ describe('moteur', () => {
   });
 
   it('perd quand la Furie abat l’Arbre-Cœur', () => {
-    let s = started();
-    s = structuredClone(s);
-    s.wrathDeck = [];
+    let s = riposte(started(), []);
     s.tree.hp = 5;
-    s.turnDeck = ['nemesis'];
     s = reduce(s, { type: 'draw' });
     expect(s.phase).toMatchObject({ kind: 'over', result: 'defeat' });
   });
 
   it('gagne quand la Némésis tombe', () => {
-    let s = drawUntil(started(), 'volley');
+    let s = started();
     s = { ...s, nemesis: { hp: 5, maxHp: 384 } };
     s = reduce(s, { type: 'submit', playerId: 'a', submission: volley([6]) });
     s = reduce(s, { type: 'resolve' });
@@ -341,7 +363,7 @@ describe('moteur', () => {
       let s = started(seed);
       let guard = 0;
       while (s.phase.kind !== 'over' && guard++ < 500) {
-        if (s.phase.kind === 'turn') s = reduce(s, { type: 'draw' });
+        if (s.phase.kind === 'nemesis') s = reduce(s, { type: 'draw' });
         else if (s.phase.kind === 'volley') {
           for (const p of s.players) {
             const actions = availableActions(p.classId);

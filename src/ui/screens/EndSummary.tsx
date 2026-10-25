@@ -41,7 +41,7 @@ export function EndSummary({ state, actions }: { state: GameState; actions: Reac
         <div className="panel-title">Bilan de la partie</div>
         <ul className="facts">
           <li>
-            {state.round} manche{state.round > 1 ? 's' : ''}, {state.volleyCount} volée{state.volleyCount > 1 ? 's' : ''}
+            {state.volleyCount} volée{state.volleyCount > 1 ? 's' : ''}{state.fury > 0 ? `, ${state.fury} Déchaînement${state.fury > 1 ? 's' : ''}` : ''}
           </li>
           <li>
             {nemesis.name} : {state.nemesis.hp} / {state.nemesis.maxHp} PV

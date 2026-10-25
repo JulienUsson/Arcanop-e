@@ -7,12 +7,18 @@ import {
   FURY_ARCHERS_STEP,
   FURY_TREE_BASE,
   FURY_TREE_STEP,
+  GAUGE_MAX,
+  BOT_CRIT_CHANCE,
+  BOT_MEAN,
+  BOT_SPREAD,
   HEAL_FACTOR,
-  REFERENCE_ARROWS,
+  SIX_ARROWS_HP_FACTOR,
   TEAM_HP_FACTORS,
+  TEAM_HP_FACTORS_SIX,
+  TEAM_SIZE,
   WEAKENED_FACTOR,
 } from './difficulty';
-import { getCard, getNemesis, ROUND_NARRATIONS, VOLLEY_NARRATIONS } from './nemesis';
+import { getCard, getNemesis } from './nemesis';
 import { nextRandom, shuffle } from './rng';
 import { arrowLabel, arrowPoints, isYellow } from './target';
 import type {
@@ -34,8 +40,8 @@ import type {
   PlayerStats,
   RootCard,
   RootEffect,
+  Shot,
   Submission,
-  TurnCard,
   VolleyResult,
   VolleyStep,
 } from './types';
@@ -62,24 +68,27 @@ export function emptyStats(): PlayerStats {
   };
 }
 
-export function arrowSlots(config: GameConfig): number {
-  return Math.max(1, config.players.length * config.arrowsPerVolley);
-}
-
 export function teamHpFactor(config: GameConfig): number {
-  return TEAM_HP_FACTORS[Math.min(config.players.length, TEAM_HP_FACTORS.length - 1)];
+  const factors = config.arrowsPerVolley >= 6 ? TEAM_HP_FACTORS_SIX : TEAM_HP_FACTORS;
+  const extra = Math.min(Math.max(0, config.players.length - TEAM_SIZE), factors.length - 1);
+  return factors[extra];
 }
 
 export function scaleFactor(config: GameConfig): number {
-  return Math.max(0.4, arrowSlots(config) / REFERENCE_ARROWS);
+  return Math.max(1, config.players.length / TEAM_SIZE);
+}
+
+export function nemesisMaxHp(config: GameConfig): number {
+  const format = config.arrowsPerVolley >= 6 ? SIX_ARROWS_HP_FACTOR : 1;
+  return Math.floor(DIFFICULTIES[config.difficulty].nemesisHp * scaleFactor(config) * teamHpFactor(config) * format);
+}
+
+export function nemesisActions(config: GameConfig): number {
+  return Math.max(1, Math.round(config.arrowsPerVolley / 3));
 }
 
 function scaled(state: GameState, amount: number): number {
   return Math.max(1, Math.floor(amount * scaleFactor(state.config)));
-}
-
-export function gaugeMax(config: GameConfig): number {
-  return config.arrowsPerVolley;
 }
 
 export function treeScale(config: GameConfig): number {
@@ -137,13 +146,12 @@ export function createGame(config: GameConfig, seed: number, gameId: string): Ga
     rng = next;
     wrathDeck.push(...shuffled.slice(0, count));
   });
-  const nemesisHp = Math.floor(diff.nemesisHpPerArrow * arrowSlots(config) * teamHpFactor(config));
+  const nemesisHp = nemesisMaxHp(config);
   const players: Player[] = config.players.map((p) => ({ ...p, hp: diff.archerHp, maxHp: diff.archerHp, gauge: 0, stats: emptyStats() }));
   return {
     gameId,
     config,
     rng,
-    round: 0,
     volleyCount: 0,
     phase: { kind: 'lobby' },
     nemesis: { hp: nemesisHp, maxHp: nemesisHp },
@@ -151,8 +159,6 @@ export function createGame(config: GameConfig, seed: number, gameId: string): Ga
     players,
     creatures: [],
     roots: [],
-    turnDeck: [],
-    turnDiscard: [],
     wrathDeck,
     wrathDiscard: [],
     revealed: false,
@@ -277,7 +283,7 @@ function spawnCreature(ctx: Ctx, card: CreatureCard) {
   const s = ctx.state;
   s.uidCounter += 1;
   const hp = scaled(s, card.hp);
-  s.creatures.push({ uid: `c${s.uidCounter}`, cardId: card.id, hp, maxHp: hp });
+  s.creatures.push({ uid: `c${s.uidCounter}`, cardId: card.id, hp, maxHp: hp, fresh: true });
   ctx.line(`${card.name} entre en jeu (${hp} PV).`, 'bad');
 }
 
@@ -285,8 +291,8 @@ function spawnRoot(ctx: Ctx, card: RootCard) {
   const s = ctx.state;
   s.uidCounter += 1;
   const hp = scaled(s, card.hp);
-  s.roots.push({ uid: `r${s.uidCounter}`, cardId: card.id, hp, maxHp: hp, countdown: card.countdown });
-  ctx.line(`${card.name} s’enracine (${hp} PV, éclot dans ${card.countdown} manche${card.countdown > 1 ? 's' : ''}).`, 'bad');
+  s.roots.push({ uid: `r${s.uidCounter}`, cardId: card.id, hp, maxHp: hp, countdown: card.countdown, fresh: true });
+  ctx.line(`${card.name} s’enracine (${hp} PV, éclot dans ${card.countdown} tour${card.countdown > 1 ? 's' : ''}).`, 'bad');
 }
 
 function applyAttackEffect(ctx: Ctx, effect: AttackEffect, source: string) {
@@ -387,13 +393,13 @@ export function describeCard(card: CorruptionCard, state?: GameState): string {
       case 'healCreatures':
         return `soigne les créatures de ${sc(e.amount)}`;
       case 'hastenRoots':
-        return `racines −${e.amount} manche`;
+        return `racines −${e.amount} tour`;
       case 'spawn':
         return `invoque ${state ? cardName(state, e.cardId) : e.cardId}`;
     }
   };
   if (card.type === 'attack') return card.effects.map(effectText).join(', ');
-  if (card.type === 'creature') return `Chaque manche : ${effectText(card.effect)}`;
+  if (card.type === 'creature') return `Chaque tour : ${effectText(card.effect)}`;
   return `À l’éclosion : ${effectText(card.effect)}`;
 }
 
@@ -415,19 +421,24 @@ function checkEnd(ctx: Ctx): boolean {
   return false;
 }
 
-function newRound(ctx: Ctx) {
+function gaussian(ctx: Ctx): number {
+  return Math.sqrt(-2 * Math.log(ctx.random() || 1e-9)) * Math.cos(2 * Math.PI * ctx.random());
+}
+
+function botShots(ctx: Ctx): Shot[] {
+  return Array.from({ length: ctx.state.config.arrowsPerVolley }, () => {
+    const score = Math.max(0, Math.min(10, Math.round(BOT_MEAN + gaussian(ctx) * BOT_SPREAD)));
+    return { score, x: score === 10 && ctx.random() < BOT_CRIT_CHANCE };
+  });
+}
+
+function beginVolley(ctx: Ctx) {
   const s = ctx.state;
-  const diff = DIFFICULTIES[s.config.difficulty];
-  const cards: TurnCard[] = [
-    ...Array<TurnCard>(diff.volleyCards).fill('volley'),
-    ...Array<TurnCard>(diff.nemesisCards).fill('nemesis'),
-  ];
-  const [deck, rng] = shuffle(cards, s.rng);
-  s.rng = rng;
-  s.round += 1;
-  s.turnDeck = deck;
-  s.turnDiscard = [];
-  ctx.line(`Manche ${s.round} : l’ordre des tours est mélangé.`);
+  s.volleyCount += 1;
+  const bots: Record<string, Shot[]> = {};
+  for (const p of s.players) if (p.bot) bots[p.id] = botShots(ctx);
+  s.phase = { kind: 'volley', volley: s.volleyCount, step: 'council', submissions: {}, bots };
+  ctx.line(`Volée ${s.volleyCount} : conseil, tir, puis saisie des impacts.`);
 }
 
 function start(state: GameState): GameState {
@@ -436,21 +447,24 @@ function start(state: GameState): GameState {
   const ctx = new Ctx(s);
   const nemesis = getNemesis(s.config.nemesisId);
   ctx.line(`${nemesis.name}, ${nemesis.title}, s’éveille avec ${s.nemesis.hp} PV.`);
-  newRound(ctx);
-  s.phase = { kind: 'turn' };
+  beginVolley(ctx);
   ctx.event('intro', `${nemesis.name}, ${nemesis.title}`, nemesis.intro, 'info');
   return s;
 }
 
-function endRound(ctx: Ctx) {
+function corruptionActs(ctx: Ctx) {
   const s = ctx.state;
-  ctx.line(`Fin de la manche ${s.round}.`);
   s.creatures.forEach((c) => {
+    if (c.fresh) return;
     const card = getCard(s.config.nemesisId, c.cardId) as CreatureCard;
     applyCreatureEffect(ctx, card.effect, card.name);
   });
   const remaining = [];
   for (const root of s.roots) {
+    if (root.fresh) {
+      remaining.push(root);
+      continue;
+    }
     root.countdown -= 1;
     const card = getCard(s.config.nemesisId, root.cardId) as RootCard;
     if (root.countdown <= 0) {
@@ -458,15 +472,11 @@ function endRound(ctx: Ctx) {
       applyRootEffect(ctx, card.effect, card.name);
       s.wrathDiscard.push(root.cardId);
     } else {
-      ctx.line(`${card.name} : encore ${root.countdown} manche${root.countdown > 1 ? 's' : ''}.`);
+      ctx.line(`${card.name} : encore ${root.countdown} tour${root.countdown > 1 ? 's' : ''}.`);
       remaining.push(root);
     }
   }
   s.roots = remaining;
-  if (checkEnd(ctx)) return;
-  const title = `Fin de la manche ${s.round}`;
-  newRound(ctx);
-  ctx.event('round', title, ctx.pick(ROUND_NARRATIONS), 'info');
 }
 
 export function nextFury(state: GameState): { level: number; tree: number; archers: number } {
@@ -484,7 +494,13 @@ const FURY_NARRATIONS = [
   'La forêt entière tremble sous sa fureur. Il n’y a plus de ruse, plus de plan : seulement la rage.',
 ];
 
-function unleashFury(ctx: Ctx) {
+interface Riposte {
+  kind: EventKind;
+  title: string;
+  narration: string;
+}
+
+function unleashFury(ctx: Ctx): Riposte {
   const s = ctx.state;
   const nemesis = getNemesis(s.config.nemesisId);
   const level = s.fury + 1;
@@ -496,19 +512,18 @@ function unleashFury(ctx: Ctx) {
   const source = `Déchaînement ${level}`;
   damageTreeBy(ctx, tree, source);
   damageArchersBy(ctx, archers, source);
-  s.phase = { kind: 'turn' };
-  if (checkEnd(ctx)) return;
   ctx.extra.fury = level;
-  ctx.event('fury', level === 1 ? 'Furie finale' : `Furie finale — Déchaînement ${level}`, FURY_NARRATIONS[Math.min(level, FURY_NARRATIONS.length) - 1], 'bad');
+  return {
+    kind: 'fury',
+    title: level === 1 ? 'Furie finale' : `Furie finale — Déchaînement ${level}`,
+    narration: FURY_NARRATIONS[Math.min(level, FURY_NARRATIONS.length) - 1],
+  };
 }
 
-function playNemesisTurn(ctx: Ctx) {
+function playWrathCard(ctx: Ctx): Riposte {
   const s = ctx.state;
   const nemesis = getNemesis(s.config.nemesisId);
-  if (s.wrathDeck.length === 0) {
-    unleashFury(ctx);
-    return;
-  }
+  if (s.wrathDeck.length === 0) return unleashFury(ctx);
   const [cardId, ...rest] = s.wrathDeck;
   s.wrathDeck = rest;
   s.revealed = false;
@@ -523,31 +538,27 @@ function playNemesisTurn(ctx: Ctx) {
   } else {
     spawnRoot(ctx, card);
   }
-  s.phase = { kind: 'turn' };
-  if (checkEnd(ctx)) return;
   const kindLabel = card.type === 'attack' ? 'Attaque' : card.type === 'creature' ? 'Créature' : 'Racine';
-  ctx.event('nemesis', `${kindLabel} — ${card.name}`, card.flavor, 'bad');
+  return { kind: 'nemesis', title: `${kindLabel} — ${card.name}`, narration: card.flavor };
 }
 
 function draw(state: GameState): GameState {
-  if (state.phase.kind !== 'turn') return state;
+  if (state.phase.kind !== 'nemesis') return state;
   const s = clone(state);
   const ctx = new Ctx(s);
-  if (s.turnDeck.length === 0) {
-    endRound(ctx);
-    return s;
-  }
-  const [card, ...rest] = s.turnDeck;
-  s.turnDeck = rest;
-  s.turnDiscard = [...s.turnDiscard, card];
-  if (card === 'volley') {
-    s.volleyCount += 1;
-    s.phase = { kind: 'volley', volley: s.volleyCount, step: 'council', submissions: {} };
-    ctx.line(`Volée ${s.volleyCount} : conseil, tir, puis saisie des impacts.`);
-    ctx.event('volley', `Volée ${s.volleyCount}`, ctx.pick(VOLLEY_NARRATIONS), 'good');
+  const { drawn, total } = state.phase;
+  const riposte = playWrathCard(ctx);
+  if (checkEnd(ctx)) return s;
+  corruptionActs(ctx);
+  if (checkEnd(ctx)) return s;
+  if (drawn + 1 < total) {
+    s.phase = { kind: 'nemesis', drawn: drawn + 1, total };
   } else {
-    playNemesisTurn(ctx);
+    s.creatures.forEach((c) => delete c.fresh);
+    s.roots.forEach((r) => delete r.fresh);
+    beginVolley(ctx);
   }
+  ctx.event(riposte.kind, total > 1 ? `${riposte.title} (${drawn + 1}/${total})` : riposte.title, riposte.narration, 'bad');
   return s;
 }
 
@@ -585,7 +596,9 @@ function submit(state: GameState, playerId: string, submission: Submission): Gam
   if (!player) return state;
   const s = clone(state);
   if (s.phase.kind !== 'volley') return state;
-  s.phase.submissions[playerId] = sanitizeSubmission(s, submission, player, s.config.arrowsPerVolley);
+  const shots = s.phase.bots[playerId];
+  const sent = shots ? { arrows: shots.map((shot, i) => ({ ...submission?.arrows?.[i], ...shot })) as Arrow[] } : submission;
+  s.phase.submissions[playerId] = sanitizeSubmission(s, sent, player, s.config.arrowsPerVolley);
   return s;
 }
 
@@ -706,7 +719,7 @@ function resolve(state: GameState): GameState {
       if (arrow.score === 10) player.stats.tens += 1;
       if (arrow.x) player.stats.crits += 1;
       if (isYellow(arrow.score)) player.stats.yellows += 1;
-      player.gauge = Math.min(gaugeMax(s.config), player.gauge + gaugeCharge(arrow, player.level));
+      player.gauge = Math.min(GAUGE_MAX, player.gauge + gaugeCharge(arrow, player.level));
     }
     const pool = volleyPool(arrows, player.coef);
     const weakened = isDown(player);
@@ -760,7 +773,7 @@ function resolve(state: GameState): GameState {
   if (totals.roots) summary.push(`${totals.roots} aux racines`);
   if (totals.heal) summary.push(`${totals.heal} PV soignés`);
   ctx.line(`Bilan : ${summary.join(', ') || 'aucun effet'}.`, 'good');
-  s.phase = { kind: 'turn' };
+  s.phase = { kind: 'nemesis', drawn: 0, total: nemesisActions(s.config) };
   if (checkEnd(ctx)) return s;
   const crits = results.reduce((n, r) => n + r.arrows.filter((a) => a.x).length, 0);
   const narration =
@@ -777,7 +790,7 @@ export function powerAvailability(state: GameState, playerId: string): { ok: boo
   const player = state.players.find((p) => p.id === playerId);
   if (!player) return { ok: false, reason: 'Archer inconnu' };
   if (state.phase.kind === 'lobby' || state.phase.kind === 'over') return { ok: false, reason: 'Partie non en cours' };
-  if (player.gauge < gaugeMax(state.config)) return { ok: false, reason: `Jauge ${player.gauge}/${gaugeMax(state.config)}` };
+  if (player.gauge < GAUGE_MAX) return { ok: false, reason: `Jauge ${player.gauge}/${GAUGE_MAX}` };
   switch (player.classId) {
     case 'loup':
       return state.wolfBoost > 0 ? { ok: false, reason: 'La Meute chasse déjà' } : { ok: true };
@@ -811,7 +824,7 @@ function usePower(state: GameState, playerId: string, targetUid?: string): GameS
     case 'ours': {
       const root = s.roots.find((r) => r.uid === targetUid) ?? s.roots[0];
       root.countdown += 1;
-      ctx.line(`${player.name} retient ${cardName(s, root.cardId)} : encore ${root.countdown} manches.`, 'power');
+      ctx.line(`${player.name} retient ${cardName(s, root.cardId)} : encore ${root.countdown} tours.`, 'power');
       narration = 'L’esprit de l’Ours plante ses griffes dans la terre et retient la racine maudite.';
       break;
     }
@@ -839,11 +852,17 @@ function usePower(state: GameState, playerId: string, targetUid?: string): GameS
 }
 
 export function migrateState(state: GameState): GameState {
+  const legacy = state as GameState & { turnDeck?: unknown; turnDiscard?: unknown; round?: unknown };
+  delete legacy.turnDeck;
+  delete legacy.turnDiscard;
+  delete legacy.round;
+  if ((state.phase.kind as string) === 'turn') state.phase = { kind: 'nemesis', drawn: 0, total: nemesisActions(state.config) };
   if (state.phase.kind === 'volley') {
+    state.phase.bots ??= {};
     if ((state.phase.step as string) !== 'council') state.phase.step = 'input';
     if (Object.values(state.phase.submissions).some((sub) => Array.isArray(sub) || 'allocation' in sub)) state.phase.submissions = {};
   }
-  if (state.lastEvent && (!state.lastEvent.kind || 'hits' in state.lastEvent)) state.lastEvent = null;
+  if (state.lastEvent && (!state.lastEvent.kind || 'hits' in state.lastEvent || ['round', 'volley'].includes(state.lastEvent.kind))) state.lastEvent = null;
   if (state.wolfBoost === 1) state.wolfBoost = 2;
   state.fury ??= 0;
   const hp = DIFFICULTIES[state.config.difficulty].archerHp;
@@ -879,6 +898,7 @@ export function reduce(state: GameState, action: GameAction): GameState {
 }
 
 export function nextCardLabel(state: GameState): string {
-  if (state.phase.kind !== 'turn') return '';
-  return state.turnDeck.length === 0 ? `Terminer la manche ${state.round}` : 'Tirer la carte suivante';
+  if (state.phase.kind !== 'nemesis') return '';
+  const label = state.wrathDeck.length === 0 ? 'Déchaînement de la Némésis' : 'Carte de la Némésis';
+  return state.phase.total > 1 ? `${label} (${state.phase.drawn + 1}/${state.phase.total})` : label;
 }

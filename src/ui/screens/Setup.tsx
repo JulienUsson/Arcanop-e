@@ -5,6 +5,7 @@ import { NemesisSheet } from '../components/NemesisSheet';
 import { ARCHER_LEVEL_IDS, ARCHER_LEVELS, CLASS_IDS, CLASSES, levelFromCoef } from '../../game/classes';
 import { DIFFICULTIES } from '../../game/difficulty';
 import { MORDELUNE, NEMESES } from '../../game/nemesis';
+import { withBots } from '../../game/team';
 import type { ArcherLevel, ClassId, Difficulty, GameConfig, PlayerConfig } from '../../game/types';
 
 const SETUP_KEY = 'arcanopee.setup';
@@ -37,7 +38,8 @@ function loadConfig(): GameConfig {
           const level: ArcherLevel = ARCHER_LEVELS[p.level] ? p.level : levelFromCoef(p.coef);
           return { ...p, level, coef: ARCHER_LEVELS[level].coef };
         });
-        return { ...defaultConfig(), ...parsed, players };
+        const arrowsPerVolley = parsed.arrowsPerVolley >= 5 ? 6 : 3;
+        return { ...defaultConfig(), ...parsed, arrowsPerVolley, players: withBots(players, newId) };
       }
     }
   } catch {}
@@ -49,19 +51,25 @@ export function Setup({ onCreate, onBack }: { onCreate: (config: GameConfig) => 
   const [sheet, setSheet] = useState<ClassId | null>(null);
   const [nemesisSheet, setNemesisSheet] = useState(false);
 
-  const updatePlayer = (id: string, patch: Partial<PlayerConfig>) =>
-    setConfig((c) => ({ ...c, players: c.players.map((p) => (p.id === id ? { ...p, ...patch } : p)) }));
+  const setPlayers = (change: (players: PlayerConfig[]) => PlayerConfig[]) =>
+    setConfig((c) => ({ ...c, players: withBots(change(c.players), newId) }));
+
+  const updatePlayer = (id: string, patch: Partial<PlayerConfig>) => setPlayers((players) => players.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+
+  const humans = config.players.filter((p) => !p.bot);
+  const bots = config.players.filter((p) => p.bot);
 
   const addPlayer = () =>
-    setConfig((c) => {
-      const used = new Set(c.players.map((p) => p.classId));
-      const classId: ClassId = CLASS_IDS.find((id) => !used.has(id)) ?? CLASS_IDS[c.players.length % 4];
-      return { ...c, players: [...c.players, newPlayer(c.players.length, classId)] };
+    setPlayers((players) => {
+      const people = players.filter((p) => !p.bot);
+      const used = new Set(people.map((p) => p.classId));
+      const classId: ClassId = CLASS_IDS.find((id) => !used.has(id)) ?? CLASS_IDS[people.length % 4];
+      return [...people, newPlayer(people.length, classId), ...players.filter((p) => p.bot)];
     });
 
-  const removePlayer = (id: string) => setConfig((c) => ({ ...c, players: c.players.filter((p) => p.id !== id) }));
+  const removePlayer = (id: string) => setPlayers((players) => players.filter((p) => p.id !== id));
 
-  const valid = config.players.length > 0 && config.players.every((p) => p.name.trim());
+  const valid = humans.length > 0 && humans.every((p) => p.name.trim());
 
   const create = () => {
     const clean: GameConfig = {
@@ -78,7 +86,7 @@ export function Setup({ onCreate, onBack }: { onCreate: (config: GameConfig) => 
 
       <section className="panel">
         <div className="panel-title">🏹 Gardiens</div>
-        {config.players.map((p) => {
+        {humans.map((p) => {
           return (
             <div key={p.id} className="player-row">
               <div className="row">
@@ -89,7 +97,7 @@ export function Setup({ onCreate, onBack }: { onCreate: (config: GameConfig) => 
                   onChange={(e) => updatePlayer(p.id, { name: e.target.value })}
                   aria-label="Nom"
                 />
-                <button className="ghost" onClick={() => removePlayer(p.id)} aria-label="Retirer" disabled={config.players.length <= 1}>
+                <button className="ghost" onClick={() => removePlayer(p.id)} aria-label="Retirer" disabled={humans.length <= 1}>
                   ✕
                 </button>
               </div>
@@ -132,10 +140,38 @@ export function Setup({ onCreate, onBack }: { onCreate: (config: GameConfig) => 
             </div>
           );
         })}
-        <button className="secondary" onClick={addPlayer} disabled={config.players.length >= MAX_PLAYERS}>
+        <button className="secondary" onClick={addPlayer} disabled={humans.length >= MAX_PLAYERS}>
           + Ajouter un archer
         </button>
       </section>
+
+      {bots.length > 0 && (
+        <section className="panel">
+          <div className="panel-title">🤖 Compagnons</div>
+          <p className="hint">
+            La partie est équilibrée pour quatre Gardiens. Les compagnons complètent l’équipe : l’appli tire leurs flèches (8 de
+            moyenne) et vous les répartissez entre leurs actions.
+          </p>
+          {bots.map((p) => (
+            <div key={p.id} className="player-row bot-row">
+              <strong className="bot-name">🤖 {p.name}</strong>
+              <div className="class-picker">
+                {CLASS_IDS.map((id) => (
+                  <button
+                    key={id}
+                    className={`class-chip${p.classId === id ? ' selected' : ''}`}
+                    style={{ ['--class-color' as string]: CLASSES[id].color }}
+                    onClick={() => (p.classId === id ? setSheet(id) : updatePlayer(p.id, { classId: id }))}
+                  >
+                    <span>{CLASSES[id].emoji}</span>
+                    {CLASSES[id].name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
 
       <section className="panel">
         <div className="panel-title">💀 Némésis</div>
@@ -171,12 +207,17 @@ export function Setup({ onCreate, onBack }: { onCreate: (config: GameConfig) => 
       <section className="panel">
         <div className="panel-title">🎯 Flèches par volée</div>
         <div className="segmented">
-          {[3, 4, 5, 6].map((n) => (
+          {[3, 6].map((n) => (
             <button key={n} className={config.arrowsPerVolley === n ? 'selected' : ''} onClick={() => setConfig({ ...config, arrowsPerVolley: n })}>
-              {n}
+              {n} flèches
             </button>
           ))}
         </div>
+        <p className="hint">
+          {config.arrowsPerVolley === 6
+            ? 'Volées de 6 flèches : la Némésis riposte deux fois après chaque volée.'
+            : 'Volées de 3 flèches : la Némésis riposte une fois après chaque volée.'}
+        </p>
       </section>
 
       {sheet && (
