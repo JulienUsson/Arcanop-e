@@ -216,7 +216,7 @@ function StageContent({ event, state, revealed }: { event: GameEvent; state: Gam
       return (
         <>
           <h1 className="stage-title">{event.title}</h1>
-          {event.boosted && <div className="stage-boost">🐺 La Meute chasse : dégâts ×2</div>}
+          {event.boosted && <div className="stage-boost">🐺 La Meute chasse : dégâts multipliés</div>}
           <ResultList event={event} state={state} revealed={revealed} />
           {revealed >= (event.results?.length ?? 0) && <p className="stage-story pop">{event.narration}</p>}
         </>

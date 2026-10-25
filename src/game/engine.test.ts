@@ -60,12 +60,12 @@ describe('moteur', () => {
     s = reduce(s, { type: 'submit', playerId: 'a', submission: volley([10, 9, 0], 'nemesis') });
     s = reduce(s, { type: 'resolve' });
     expect(s.phase.kind).toBe('turn');
-    expect(s.nemesis.hp).toBe(hp - 29);
+    expect(s.nemesis.hp).toBe(hp - 28);
     const alice = s.players[0];
     expect(alice.gauge).toBe(2);
     expect(alice.stats.misses).toBe(1);
     expect(alice.stats.totalScore).toBe(19);
-    expect(alice.stats.damageNemesis).toBe(29);
+    expect(alice.stats.damageNemesis).toBe(28);
   });
 
   it('compte le X comme un coup critique', () => {
@@ -87,7 +87,7 @@ describe('moteur', () => {
     expect(s.phase.kind === 'volley' && s.phase.submissions.b.arrows.map((a) => a.action)).toEqual(['nemesis', 'heal', 'creatures']);
     s = reduce(s, { type: 'resolve' });
     expect(s.tree.hp).toBe(24);
-    expect(s.nemesis.hp).toBe(hp - 8 - 8);
+    expect(s.nemesis.hp).toBe(hp - 8 - 7);
   });
 
   it('ne donne aucune action à une flèche hors cible', () => {
@@ -99,12 +99,10 @@ describe('moteur', () => {
     ]);
   });
 
-  it('guide la volée du conseil à la saisie', () => {
+  it('enchaîne le conseil et tir puis la saisie', () => {
     let s = drawUntil(started(), 'volley');
     expect(s.phase).toMatchObject({ kind: 'volley', step: 'council' });
     expect(s.lastEvent?.kind).toBe('volley');
-    s = reduce(s, { type: 'advance' });
-    expect(s.phase).toMatchObject({ step: 'shoot' });
     s = reduce(s, { type: 'advance' });
     expect(s.phase).toMatchObject({ step: 'input' });
     expect(reduce(s, { type: 'advance' })).toBe(s);
@@ -120,7 +118,7 @@ describe('moteur', () => {
         playerId: 'a',
         arrows: [arrow(9, 'nemesis'), arrow(0)],
         pool: 9,
-        effects: [{ action: 'nemesis', points: 9, amount: 14, target: 'Mordelune' }],
+        effects: [{ action: 'nemesis', points: 9, amount: 13, target: 'Mordelune' }],
       },
     ]);
   });
@@ -138,7 +136,7 @@ describe('moteur', () => {
     const hp = s.nemesis.hp;
     s = reduce(s, { type: 'submit', playerId: 'b', submission: volley([7], 'creatures') });
     s = reduce(s, { type: 'resolve' });
-    expect(s.nemesis.hp).toBe(hp - 11);
+    expect(s.nemesis.hp).toBe(hp - 10);
   });
 
   it('frappe la créature visée par la flèche puis déborde', () => {
@@ -191,7 +189,7 @@ describe('moteur', () => {
     s.tree.hp = 20;
     expect(powerAvailability(s, 'a').ok).toBe(true);
     s = reduce(s, { type: 'power', playerId: 'a' });
-    expect(s.wolfBoost).toBe(1);
+    expect(s.wolfBoost).toBe(2);
     expect(powerAvailability(s, 'a').ok).toBe(false);
     s = reduce(s, { type: 'power', playerId: 'b', targetUid: 'r1' });
     expect(s.roots[0].countdown).toBe(2);
@@ -204,6 +202,59 @@ describe('moteur', () => {
     s = reduce(s, { type: 'resolve' });
     expect(s.nemesis.hp).toBe(hp - 24);
     expect(s.wolfBoost).toBe(0);
+  });
+
+  it('donne des PV aux archers et divise par deux les effets d’un archer à terre', () => {
+    let s = drawUntil(started(), 'volley');
+    expect(s.players.map((p) => p.hp)).toEqual([15, 15, 15, 15]);
+    s = structuredClone(s);
+    s.players[0].hp = 0;
+    const hp = s.nemesis.hp;
+    s = reduce(s, { type: 'submit', playerId: 'a', submission: volley([10, 10], 'nemesis') });
+    s = reduce(s, { type: 'resolve' });
+    expect(s.nemesis.hp).toBe(hp - 15);
+  });
+
+  it('soigne un archer avec une flèche de soin et le relève', () => {
+    let s = drawUntil(started(), 'volley');
+    s = structuredClone(s);
+    s.players[0].hp = 0;
+    s = reduce(s, { type: 'submit', playerId: 'd', submission: { arrows: [{ ...arrow(8, 'heal'), target: 'a' }] } });
+    s = reduce(s, { type: 'resolve' });
+    expect(s.players[0].hp).toBe(9);
+    expect(s.tree.hp).toBe(45);
+    expect(s.lastEvent?.lines.some((l) => l.includes('se relève'))).toBe(true);
+  });
+
+  it('affaiblit le pouvoir d’un archer à terre', () => {
+    let s = drawUntil(started(), 'volley');
+    s = structuredClone(s);
+    s.players.forEach((p) => {
+      p.gauge = GAUGE_MAX;
+      p.hp = 0;
+    });
+    s.tree.hp = 10;
+    s = reduce(s, { type: 'power', playerId: 'a' });
+    expect(s.wolfBoost).toBe(1.5);
+    s = reduce(s, { type: 'power', playerId: 'd' });
+    expect(s.tree.hp).toBe(17);
+    expect(s.players.map((p) => p.hp)).toEqual([2, 2, 2, 2]);
+  });
+
+  it('fait frapper un archer au hasard ou tous les archers', () => {
+    let s = started();
+    s = structuredClone(s);
+    s.turnDeck = [];
+    s.creatures = [
+      { uid: 'c1', cardId: 'loup-ronce', hp: 18, maxHp: 18 },
+      { uid: 'c2', cardId: 'cerf-corrompu', hp: 34, maxHp: 34 },
+    ];
+    s.players[1].hp = 2;
+    s = reduce(s, { type: 'draw' });
+    const lost = s.players.map((p, i) => [15, 2, 15, 15][i] - p.hp);
+    expect(lost.filter((n) => n === 4 + 8)).toHaveLength(1);
+    expect(s.players[1].hp).toBe(0);
+    expect(s.players[1].stats.knockouts).toBe(1);
   });
 
   it('fait jouer une carte de colère sur une carte Némésis', () => {

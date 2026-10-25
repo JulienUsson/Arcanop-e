@@ -13,7 +13,9 @@ interface Props {
   arrowsPerVolley: number;
   boost?: number;
   suggested?: Action | null;
-  targets: Record<TargetKind, TargetOption[]>;
+  suggestedTarget?: string | null;
+  weakened?: boolean;
+  targets: Record<TargetKind | 'heal', TargetOption[]>;
   submitted?: Submission;
   canSubmit: boolean;
   blockedReason?: string;
@@ -63,28 +65,29 @@ function TargetPicker({
   selected,
   onPick,
 }: {
-  kind: TargetKind;
+  kind: TargetKind | 'heal';
   options: TargetOption[];
   selected: string | null;
   onPick: (uid: string, origin: Element) => void;
 }) {
-  if (options.length === 0) {
+  if (options.length === 0 && kind !== 'heal') {
     return <p className="target-none">Aucune {kind === 'creatures' ? 'créature' : 'racine'} en jeu : la flèche frappera la Némésis.</p>;
   }
   return (
     <div className="target-picker" role="radiogroup" aria-label="Cible">
-      <span className="target-label">🎯</span>
+      <span className="target-label">{kind === 'heal' ? '💚' : '🎯'}</span>
       {options.map((o) => (
         <button
           key={o.uid}
           role="radio"
           aria-checked={selected === o.uid}
-          className={`target-chip${selected === o.uid ? ' selected' : ''}`}
+          className={`target-chip${selected === o.uid ? ' selected' : ''}${kind === 'heal' && o.uid !== 'tree' && o.hp <= 0 ? ' down' : ''}`}
           onClick={(e) => onPick(o.uid, e.currentTarget)}
         >
           <span className="target-name">{o.name}</span>
           <span className="target-meta">
-            {o.hp}/{o.maxHp} PV{o.countdown !== undefined ? ` · ⏳${o.countdown}` : ''}
+            {kind === 'heal' && o.uid !== 'tree' && o.hp <= 0 ? 'à terre' : `${o.hp}/${o.maxHp} PV`}
+            {o.countdown !== undefined ? ` · ⏳${o.countdown}` : ''}
           </span>
           <span className="target-hp" style={{ width: `${(o.hp / o.maxHp) * 100}%` }} />
         </button>
@@ -93,7 +96,21 @@ function TargetPicker({
   );
 }
 
-export function VolleyInput({ draftKey, classId, coef, arrowsPerVolley, boost = 1, suggested, targets, submitted, canSubmit, blockedReason, onSubmit }: Props) {
+export function VolleyInput({
+  draftKey,
+  classId,
+  coef,
+  arrowsPerVolley,
+  boost = 1,
+  suggested,
+  suggestedTarget,
+  weakened = false,
+  targets,
+  submitted,
+  canSubmit,
+  blockedReason,
+  onSubmit,
+}: Props) {
   const cls = CLASSES[classId];
   const actions = availableActions(classId);
   const fallback: Action = suggested && actionMultiplier(classId, suggested) > 0 ? suggested : cls.specialty;
@@ -128,12 +145,17 @@ export function VolleyInput({ draftKey, classId, coef, arrowsPerVolley, boost = 
       const keep = arrow.action === action && options.some((o) => o.uid === arrow.target);
       return { ...arrow, action, target: keep ? arrow.target : (options[0]?.uid ?? null) };
     }
+    if (action === 'heal') {
+      const keep = arrow.action === 'heal' && targets.heal.some((o) => o.uid === arrow.target);
+      const preferred = suggested === 'heal' && targets.heal.some((o) => o.uid === suggestedTarget) ? suggestedTarget : null;
+      return { ...arrow, action, target: keep ? arrow.target : preferred };
+    }
     const { target: _drop, ...rest } = arrow;
     return { ...rest, action };
   };
 
   const targetName = (action: Action, uid: string | null | undefined) =>
-    action === 'creatures' || action === 'roots' ? targets[action].find((o) => o.uid === uid)?.name : undefined;
+    action === 'creatures' || action === 'roots' || action === 'heal' ? targets[action].find((o) => o.uid === (uid ?? (action === 'heal' ? 'tree' : uid)))?.name : undefined;
 
   const addArrow = (key: Pick<Arrow, 'score' | 'x'>, origin?: Element) => {
     if (full) return;
@@ -159,7 +181,7 @@ export function VolleyInput({ draftKey, classId, coef, arrowsPerVolley, boost = 
   };
 
   const aim = (index: number, uid: string, origin?: Element) => {
-    update({ ...draft, arrows: arrows.map((a, i) => (i === index ? { ...a, target: uid } : a)) });
+    update({ ...draft, arrows: arrows.map((a, i) => (i === index ? { ...a, target: uid === 'tree' ? null : uid } : a)) });
     burstAt(origin, 'dust', 5);
     play('tap');
   };
@@ -193,6 +215,7 @@ export function VolleyInput({ draftKey, classId, coef, arrowsPerVolley, boost = 
             <strong>{raw}</strong> pts
           </span>
         </div>
+        {weakened && <p className="weakened-banner">🩹 À terre : vos flèches comptent moitié jusqu’à ce qu’on vous soigne.</p>}
         <p className="cordon-rule">
           <strong>Cordon défavorable :</strong> une flèche qui touche la ligne entre deux zones compte pour la zone inférieure.
         </p>
@@ -247,6 +270,7 @@ export function VolleyInput({ draftKey, classId, coef, arrowsPerVolley, boost = 
         </div>
       )}
 
+      {weakened && <p className="weakened-banner">🩹 À terre : vos flèches comptent moitié jusqu’à ce qu’on vous soigne.</p>}
       <div className="assign-all">
         <span>Tout sur</span>
         {actions.map((action) => (
@@ -284,6 +308,7 @@ export function VolleyInput({ draftKey, classId, coef, arrowsPerVolley, boost = 
             {(arrow.action === 'creatures' || arrow.action === 'roots') && (
               <TargetPicker kind={arrow.action} options={targets[arrow.action]} selected={arrow.target ?? null} onPick={(uid, el) => aim(index, uid, el)} />
             )}
+            {arrow.action === 'heal' && <TargetPicker kind="heal" options={targets.heal} selected={arrow.target ?? 'tree'} onPick={(uid, el) => aim(index, uid, el)} />}
           </li>
         ))}
       </ul>
@@ -291,7 +316,7 @@ export function VolleyInput({ draftKey, classId, coef, arrowsPerVolley, boost = 
       {groups.length > 0 && (
         <ul className="assign-totals">
           {groups.map((group) => {
-            const amount = effectAmount(classId, group.action, volleyPool(group.arrows, coef), boost);
+            const amount = effectAmount(classId, group.action, volleyPool(group.arrows, coef), boost, weakened);
             const name = targetName(group.action, group.target);
             const redirected = (group.action === 'creatures' || group.action === 'roots') && targets[group.action].length === 0;
             return (

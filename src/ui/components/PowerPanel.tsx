@@ -67,6 +67,7 @@ export function PowerPanel({ state, playerId, disabled, onActivate }: Props) {
           {availability.ok ? 'Activer le pouvoir' : availability.reason}
         </button>
       )}
+      {player.hp <= 0 && <p className="hint">🩹 À terre : ce pouvoir n’agira qu’à moitié.</p>}
       <p className="hint">Chaque flèche dans le jaune remplit la jauge.</p>
     </section>
   );

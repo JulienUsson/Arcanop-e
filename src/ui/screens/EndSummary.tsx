@@ -27,6 +27,7 @@ export function EndSummary({ state, actions }: { state: GameState; actions: Reac
     { label: 'Plus gros dégâts', player: best(players, damage), value: (p: Player) => `${damage(p)} dégâts` },
     { label: 'Meilleure moyenne', player: best(players, (p) => (p.stats.arrows ? p.stats.totalScore / p.stats.arrows : 0)), value: (p: Player) => `${average(p)} pts` },
     { label: 'Gardien de l’Arbre', player: best(players, (p) => p.stats.healing), value: (p: Player) => `${p.stats.healing} PV soignés` },
+    { label: 'Rempart vivant', player: best(players, (p) => p.stats.damageTaken), value: (p: Player) => `${p.stats.damageTaken} dégâts encaissés` },
     { label: 'Œil d’or', player: best(players, (p) => p.stats.yellows), value: (p: Player) => `${p.stats.yellows} flèches jaunes` },
   ];
 
@@ -85,6 +86,9 @@ export function EndSummary({ state, actions }: { state: GameState; actions: Reac
                 <th>Racines</th>
                 <th>Soin</th>
                 <th>Pouvoirs</th>
+                <th>PV</th>
+                <th>Encaissés</th>
+                <th>À terre</th>
                 <th>Meill. volée</th>
               </tr>
             </thead>
@@ -105,6 +109,11 @@ export function EndSummary({ state, actions }: { state: GameState; actions: Reac
                   <td>{p.stats.damageRoots}</td>
                   <td>{p.stats.healing}</td>
                   <td>{p.stats.powersUsed}</td>
+                  <td>
+                    {p.hp}/{p.maxHp}
+                  </td>
+                  <td>{p.stats.damageTaken}</td>
+                  <td>{p.stats.knockouts}</td>
                   <td>{p.stats.bestVolley}</td>
                 </tr>
               ))}

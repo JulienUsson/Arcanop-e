@@ -12,8 +12,7 @@ interface Props {
 
 const STEPS = [
   { id: 'card', icon: '🃏', label: 'Carte' },
-  { id: 'council', icon: '🗣️', label: 'Conseil' },
-  { id: 'shoot', icon: '🏹', label: 'Tir' },
+  { id: 'council', icon: '🏹', label: 'Conseil & tir' },
   { id: 'input', icon: '🎯', label: 'Saisie' },
   { id: 'resolve', icon: '⚔️', label: 'Résolution' },
 ];
@@ -48,14 +47,11 @@ function texts(state: GameState, role: 'host' | 'guest', playerId?: string | nul
     const total = state.players.length;
     if (phase.step === 'council') {
       return {
-        title: 'Conseil de guerre',
-        text: role === 'host' ? 'Regardez les menaces ensemble et décidez qui vise quoi. Chaque archer choisira sa cible en assignant ses flèches.' : 'Écoutez l’équipe et décidez de votre cible.',
-      };
-    }
-    if (phase.step === 'shoot') {
-      return {
-        title: 'Tirez !',
-        text: role === 'host' ? `Chaque archer tire ses ${arrows} flèches. Passez à la saisie quand toutes sont plantées.` : `Tirez vos ${arrows} flèches, puis saisissez vos scores.`,
+        title: 'Conseil & tir',
+        text:
+          role === 'host'
+            ? `Regardez les menaces ensemble, décidez qui vise quoi, puis chacun tire ses ${arrows} flèches. Passez à la saisie quand toutes sont plantées.`
+            : `Décidez de votre cible avec l’équipe, puis tirez vos ${arrows} flèches.`,
       };
     }
     if (role === 'guest' && playerId && phase.submissions[playerId]) {

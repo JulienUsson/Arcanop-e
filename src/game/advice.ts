@@ -36,6 +36,14 @@ export function councilAdvice(state: GameState): Advice[] {
     out.push({ icon: '🐾', text: `${card.name} (${creature.hp} PV) — ${effect.charAt(0).toLowerCase()}${effect.slice(1)}.` });
   }
 
+  for (const p of state.players) {
+    if (p.hp <= 0) {
+      out.push({ icon: '🩹', urgent: true, text: `${p.name} est à terre : ses flèches et son pouvoir comptent moitié. Le Cerf et l’Ours peuvent le soigner.` });
+    } else if (p.hp <= p.maxHp * 0.35) {
+      out.push({ icon: '🩹', text: `${p.name} est blessé (${p.hp}/${p.maxHp} PV).` });
+    }
+  }
+
   if (treeRatio <= 0.4) out.push({ icon: '🌳', urgent: true, text: `L’Arbre-Cœur faiblit (${state.tree.hp} PV) : le Cerf et l’Ours peuvent le soigner.` });
   if (state.wolfBoost > 0) out.push({ icon: '🐺', text: 'La Meute chasse : cette volée inflige des dégâts doublés.' });
   if (nemesisRatio <= 0.25) out.push({ icon: '💀', text: `${nemesis.name} vacille (${state.nemesis.hp} PV) : concentrez le tir sur elle !` });
@@ -61,6 +69,7 @@ export function councilAdvice(state: GameState): Advice[] {
 export interface Suggestion {
   action: Action;
   reason: string;
+  target?: string;
 }
 
 export function suggestion(state: GameState, playerId: string): Suggestion | null {
@@ -70,9 +79,12 @@ export function suggestion(state: GameState, playerId: string): Suggestion | nul
   const urgentRoot = state.roots.some((r) => r.countdown <= 1);
   let action: Action = CLASSES[player.classId].specialty === 'heal' ? 'nemesis' : CLASSES[player.classId].specialty;
   let reason = action === 'nemesis' ? 'Frappez la Némésis.' : 'Misez sur votre spécialité.';
+  const down = state.players.find((p) => p.hp <= 0);
   if (has('heal') && state.tree.hp / state.tree.maxHp <= 0.4) {
     action = 'heal';
     reason = 'L’Arbre-Cœur a besoin de soins.';
+  } else if (has('heal') && down) {
+    return { action: 'heal', target: down.id, reason: `${down.name} est à terre : relevez-le.` };
   } else if (has('roots') && urgentRoot) {
     action = 'roots';
     reason = 'Une racine va éclore.';
