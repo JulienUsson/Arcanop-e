@@ -60,6 +60,13 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
     else if (phase) setTab((t) => (t === 'fiche' ? t : 'combat'));
   }, [stepKey]);
 
+  const allSubmitted = phase?.kind === 'volley' && Object.keys(phase.submissions).length === (snap.state?.players.length ?? 0);
+  useEffect(() => {
+    if (!allSubmitted) return;
+    const timer = setTimeout(() => setTab((t) => (t === 'cible' ? 'combat' : t)), 900);
+    return () => clearTimeout(timer);
+  }, [allSubmitted]);
+
   const { state, you, roster, status } = snap;
   const connected = status === 'connected';
 
