@@ -1,8 +1,8 @@
 import { migrateState, reduce } from '../game/engine';
 import type { GameAction, GameState } from '../game/types';
 import { decode, encode, type GuestMessage, type HostMessage, type RosterEntry } from './protocol';
-import { acceptAnswer, closePeer, createOffer, type PeerLink } from './rtc';
-import { decodeSignal, signalToQr, signalToText } from './sdp';
+import { acceptAnswer, closePeer, connectionFailure, createOffer, hidesAddress, type PeerLink } from './rtc';
+import { decodeSignal, signalToQr, signalToText, type SignalData } from './sdp';
 
 const STORAGE_KEY = 'arcanopee.host';
 const HISTORY_LIMIT = 40;
@@ -22,7 +22,7 @@ export interface HostSnapshot {
   state: GameState;
   roster: RosterEntry[];
   canUndo: boolean;
-  invite: { qr: string; text: string } | null;
+  invite: { qr: string; text: string; hidden: boolean } | null;
   inviteStatus: InviteStatus;
   inviteError: string | null;
   phones: number;
@@ -40,7 +40,7 @@ export class HostSession {
   private conns = new Map<number, Conn>();
   private nextConnId = 1;
   private listeners = new Set<() => void>();
-  private invite: { link: PeerLink; qr: string; text: string } | null = null;
+  private invite: { link: PeerLink; offer: SignalData; qr: string; text: string } | null = null;
   private inviteStatus: InviteStatus = 'idle';
   private inviteError: string | null = null;
   private snapshot: HostSnapshot;
@@ -115,7 +115,7 @@ export class HostSession {
         closePeer(link);
         return;
       }
-      this.invite = { link, qr: signalToQr(link.offer), text: signalToText(link.offer) };
+      this.invite = { link, offer: link.offer, qr: signalToQr(link.offer), text: signalToText(link.offer) };
       this.inviteStatus = 'ready';
     } catch (e) {
       this.inviteStatus = 'error';
@@ -140,17 +140,26 @@ export class HostSession {
     this.inviteStatus = 'connecting';
     this.notify();
     const conn = this.attach(invite.link);
+    const { pc, channel } = invite.link;
     await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => {
+      const fail = () => {
+        clearTimeout(timer);
+        pc.removeEventListener('iceconnectionstatechange', watch);
         this.drop(conn);
-        reject(new Error('La connexion n’a pas abouti. Vérifiez que les téléphones partagent un réseau.'));
-      }, OPEN_TIMEOUT);
+        reject(new Error(connectionFailure(invite.offer, answer)));
+      };
+      const watch = () => {
+        if (pc.iceConnectionState === 'failed') fail();
+      };
+      const timer = setTimeout(fail, OPEN_TIMEOUT);
       const opened = () => {
         clearTimeout(timer);
+        pc.removeEventListener('iceconnectionstatechange', watch);
         resolve();
       };
-      if (invite.link.channel.readyState === 'open') opened();
-      else invite.link.channel.addEventListener('open', opened, { once: true });
+      pc.addEventListener('iceconnectionstatechange', watch);
+      if (channel.readyState === 'open') opened();
+      else channel.addEventListener('open', opened, { once: true });
     }).finally(() => {
       if (this.invite === invite) {
         this.invite = null;
@@ -269,7 +278,7 @@ export class HostSession {
       state: this.state,
       roster: this.roster(),
       canUndo: this.history.length > 0,
-      invite: this.invite ? { qr: this.invite.qr, text: this.invite.text } : null,
+      invite: this.invite ? { qr: this.invite.qr, text: this.invite.text, hidden: hidesAddress(this.invite.offer) } : null,
       inviteStatus: this.inviteStatus,
       inviteError: this.inviteError,
       phones: [...this.conns.values()].filter((c) => c.open).length,

@@ -1,7 +1,7 @@
 import { migrateState } from '../game/engine';
 import type { GameState, Submission } from '../game/types';
 import { decode, encode, type GuestMessage, type HostMessage, type RosterEntry } from './protocol';
-import { acceptOffer, closePeer, type PeerLink } from './rtc';
+import { acceptOffer, closePeer, hidesAddress, type PeerLink } from './rtc';
 import { decodeSignal, signalToQr, signalToText } from './sdp';
 
 const TOKEN_KEY = 'arcanopee.token';
@@ -12,7 +12,7 @@ export type GuestStatus = 'idle' | 'answering' | 'answer' | 'connected' | 'lost'
 
 export interface GuestSnapshot {
   status: GuestStatus;
-  answer: { qr: string; text: string } | null;
+  answer: { qr: string; text: string; hidden: boolean } | null;
   error: string | null;
   state: GameState | null;
   roster: RosterEntry[];
@@ -76,7 +76,7 @@ export class GuestSession {
       const link = await acceptOffer(offer);
       this.link = link;
       this.wire(link);
-      this.set({ status: 'answer', answer: { qr: signalToQr(link.answer), text: signalToText(link.answer) } });
+      this.set({ status: 'answer', answer: { qr: signalToQr(link.answer), text: signalToText(link.answer), hidden: hidesAddress(link.answer) } });
       setTimeout(() => {
         if (this.link === link && link.channel.readyState !== 'open') {
           closePeer(link);
