@@ -5,7 +5,7 @@ import { NemesisSheet } from '../components/NemesisSheet';
 import { ARCHER_LEVEL_IDS, ARCHER_LEVELS, CLASS_IDS, CLASSES, levelFromCoef } from '../../game/classes';
 import { DIFFICULTIES } from '../../game/difficulty';
 import { MORDELUNE, NEMESES } from '../../game/nemesis';
-import { withBots } from '../../game/team';
+import { BOT_SKILLS, withBots } from '../../game/team';
 import type { ArcherLevel, ClassId, Difficulty, GameConfig, PlayerConfig } from '../../game/types';
 
 const SETUP_KEY = 'arcanopee.setup';
@@ -149,8 +149,8 @@ export function Setup({ onCreate, onBack }: { onCreate: (config: GameConfig) => 
         <section className="panel">
           <div className="panel-title">🤖 Compagnons</div>
           <p className="hint">
-            La partie est équilibrée pour quatre Gardiens. Les compagnons complètent l’équipe : l’appli tire leurs flèches (8 de
-            moyenne) et vous les répartissez entre leurs actions.
+            La partie est équilibrée pour quatre Gardiens. Les compagnons complètent l’équipe : l’appli tire leurs flèches selon leur
+            niveau et vous les répartissez entre leurs actions.
           </p>
           {bots.map((p) => (
             <div key={p.id} className="player-row bot-row">
@@ -165,6 +165,20 @@ export function Setup({ onCreate, onBack }: { onCreate: (config: GameConfig) => 
                   >
                     <span>{CLASSES[id].emoji}</span>
                     {CLASSES[id].name}
+                  </button>
+                ))}
+              </div>
+              <div className="level-picker" role="radiogroup" aria-label="Niveau du compagnon">
+                {BOT_SKILLS.map((skill) => (
+                  <button
+                    key={skill.id}
+                    role="radio"
+                    aria-checked={p.skill === skill.id}
+                    className={`level-chip skill-${skill.id}${p.skill === skill.id ? ' selected' : ''}`}
+                    onClick={() => updatePlayer(p.id, { skill: skill.id })}
+                  >
+                    <strong>{skill.label}</strong>
+                    <small>{skill.text}</small>
                   </button>
                 ))}
               </div>

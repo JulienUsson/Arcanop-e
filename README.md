@@ -78,7 +78,7 @@ La partie alterne simplement : les archers tirent, la Némésis riposte. Il n'y 
 
 **Volées de 3 ou 6 flèches** : une volée de 6 flèches vaut deux volées de 3, la riposte compte donc deux tours de la Némésis (deux cartes, les créatures agissent deux fois). Les PV des adversaires ne dépendent pas du format.
 
-**Compagnons** : la partie est équilibrée pour quatre Gardiens. À moins de quatre archers, des compagnons 🤖 complètent l'équipe, en prenant par défaut les esprits encore libres (modifiables à la mise en place). Au début de chaque volée, l'appli tire leurs flèches (8 de moyenne, un 10 sur trois est un X) ; l'hôte les répartit entre leurs actions comme pour un archer, en choisissant les cibles. Ils ont des PV, une jauge et un pouvoir comme les autres. Un téléphone ne peut pas prendre le contrôle d'un compagnon.
+**Compagnons** : la partie est équilibrée pour quatre Gardiens. À moins de quatre archers, des compagnons 🤖 complètent l'équipe, en prenant par défaut les esprits encore libres (modifiables à la mise en place). Chaque compagnon a un niveau, choisi à la mise en place : Novice (7 de moyenne par flèche), Aguerri (8, par défaut) ou Vétéran (9). L'appli n'affiche jamais ces moyennes aux joueurs, seulement le nom du niveau. Au début de chaque volée, elle tire leurs flèches selon leur niveau (un 10 sur trois est un X) ; l'hôte les répartit entre leurs actions comme pour un archer, en choisissant les cibles. Ils ont des PV, une jauge et un pouvoir comme les autres. Un téléphone ne peut pas prendre le contrôle d'un compagnon.
 
 Victoire quand la Némésis tombe à 0 PV. Défaite quand l'Arbre-Cœur tombe à 0 PV.
 

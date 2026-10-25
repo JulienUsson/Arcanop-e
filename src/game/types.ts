@@ -6,6 +6,8 @@ export type Difficulty = 'facile' | 'normal' | 'difficile';
 
 export type ArcherLevel = 'facile' | 'normal' | 'difficile';
 
+export type BotSkill = 'novice' | 'aguerri' | 'veteran';
+
 export interface Arrow {
   score: number;
   x: boolean;
@@ -24,6 +26,7 @@ export interface PlayerConfig {
   level: ArcherLevel;
   coef: number;
   bot?: boolean;
+  skill?: BotSkill;
 }
 
 export interface GameConfig {

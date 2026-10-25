@@ -1,4 +1,4 @@
-import type { Difficulty } from './types';
+import type { BotSkill, Difficulty } from './types';
 
 export interface DifficultyDef {
   id: Difficulty;
@@ -59,7 +59,7 @@ export const FURY_ARCHERS_BASE = 3;
 export const FURY_ARCHERS_STEP = 1;
 export const TEAM_SIZE = 4;
 export const SIX_ARROWS_HP_FACTOR = 0.9;
-export const BOT_MEAN = 8;
+export const BOT_MEANS: Record<BotSkill, number> = { novice: 7, aguerri: 8, veteran: 9 };
 export const BOT_SPREAD = 2;
 export const BOT_CRIT_CHANCE = 0.35;
 export const TEAM_HP_FACTORS = [1, 1.08, 1.14, 1.28, 1.37];
