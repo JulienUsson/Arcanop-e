@@ -4,7 +4,7 @@ import { describeCard, nextFury } from '../../game/engine';
 import { getCard, getNemesis } from '../../game/nemesis';
 import { arrowLabel, RING_COLORS } from '../../game/target';
 import type { CorruptionCard, GameEvent, GameState, VolleyResult } from '../../game/types';
-import { burst, burstAt, flash, shake } from '../fx';
+import { burst, burstAt, flash, punch, shake, useTween } from '../fx';
 import { play, type Sound } from '../sfx';
 
 const STEP_MS = 420;
@@ -33,6 +33,22 @@ function resultSound(result: VolleyResult): Sound {
   if (result.arrows.some((a) => a.x)) return 'power';
   if (result.pool === 0) return 'miss';
   return result.effects.every((e) => e.action === 'heal') ? 'heal' : 'hit';
+}
+
+interface Rating {
+  label: string;
+  tier: number;
+}
+
+export function volleyRating(results: VolleyResult[]): Rating | null {
+  const arrows = results.flatMap((r) => r.arrows);
+  if (arrows.length === 0) return null;
+  const mean = arrows.reduce((sum, a) => sum + a.score, 0) / arrows.length;
+  if (arrows.every((a) => a.score === 10)) return { label: 'Volée parfaite !', tier: 4 };
+  if (mean >= 8.5) return { label: 'Volée héroïque !', tier: 3 };
+  if (mean >= 7.5) return { label: 'Belle volée !', tier: 2 };
+  if (mean >= 6) return { label: 'Volée honnête', tier: 1 };
+  return { label: 'La forêt retient son souffle…', tier: 0 };
 }
 
 function steps(event: GameEvent): number {
@@ -109,7 +125,10 @@ export function EventStage({ state, event, onClose }: { state: GameState; event:
     if (!event || revealed >= total) return;
     const timer = setTimeout(() => {
       const result = event.results?.[revealed];
-      if (result) play(resultSound(result));
+      if (result) {
+        play(resultSound(result));
+        if (result.pool > 0) play('combo', revealed * 2);
+      }
       setRevealed((r) => r + 1);
     }, revealed === 0 ? 700 : STEP_MS);
     return () => clearTimeout(timer);
@@ -124,11 +143,28 @@ export function EventStage({ state, event, onClose }: { state: GameState; event:
       burstAt(el, 'sparks', 30);
       flash('rgba(246, 211, 45, 0.35)');
       shake('soft');
+      punch(listRef.current, 1.07);
+    } else {
+      punch(el, 1.04);
     }
     if (result.effects.some((e) => e.killed)) burstAt(el, 'smoke', 14);
     if (result.effects.some((e) => e.action === 'heal')) burstAt(el, 'leaves', 12);
     if (result.effects.some((e) => e.action !== 'heal')) burstAt(el, 'shards', 10);
   }, [revealed]);
+
+  useEffect(() => {
+    if (!event?.results?.length || revealed < total || event.kind !== 'resolve') return;
+    const rating = volleyRating(event.results);
+    if (!rating) return;
+    const timer = setTimeout(() => {
+      play(rating.tier >= 3 ? 'power' : 'stamp');
+      const stamp = listRef.current?.querySelector('.volley-rating');
+      if (rating.tier >= 3) burstAt(stamp, 'sparks', 26);
+      if (rating.tier === 4) [0, 300, 650].forEach((t) => setTimeout(() => burst('confetti', innerWidth / 2, innerHeight * 0.35, 24), t));
+      if (rating.tier >= 2) shake('soft');
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [eventId, revealed >= total]);
 
   if (!event) return null;
 
@@ -142,6 +178,9 @@ export function EventStage({ state, event, onClose }: { state: GameState; event:
     <div className={`stage stage-${event.kind} tone-${event.tone}`} onClick={close} role="dialog" aria-live="polite">
       <div className="stage-glow" />
       <div className="stage-rays" />
+      {event.results && revealed > 0 && revealed <= event.results.length && (
+        <ArrowVolley key={revealed} result={event.results[revealed - 1]} seed={revealed} />
+      )}
       <div className="stage-body" ref={listRef} onClick={(e) => e.stopPropagation()}>
         <StageContent event={event} state={state} revealed={revealed} />
         <button className={`primary big stage-continue${done ? '' : ' skipping'}`} onClick={close}>
@@ -212,6 +251,7 @@ function StageContent({ event, state, revealed }: { event: GameEvent; state: Gam
           <h1 className="stage-title">{event.title}</h1>
           {event.boosted && <div className="stage-boost">🐺 La Meute chasse : dégâts multipliés</div>}
           <ResultList event={event} state={state} revealed={revealed} />
+          {revealed >= (event.results?.length ?? 0) && <RatingStamp results={event.results ?? []} />}
           {revealed >= (event.results?.length ?? 0) && <p className="stage-story pop">{event.narration}</p>}
         </>
       );
@@ -298,6 +338,42 @@ function NemesisCard({ event, state }: { event: GameEvent; state: GameState }) {
   );
 }
 
+function RatingStamp({ results }: { results: VolleyResult[] }) {
+  const rating = volleyRating(results);
+  if (!rating) return null;
+  return <div className={`volley-rating tier-${rating.tier}`}>{rating.label}</div>;
+}
+
+function ArrowVolley({ result, seed }: { result: VolleyResult; seed: number }) {
+  return (
+    <span className="arrow-volley" aria-hidden>
+      {result.arrows
+        .filter((a) => a.score > 0)
+        .map((a, i) => (
+          <span
+            key={i}
+            className={`arrow-streak${a.x ? ' crit' : ''}`}
+            style={{ left: `${18 + ((seed * 37 + i * 23) % 64)}%`, animationDelay: `${i * 70}ms` }}
+          />
+        ))}
+    </span>
+  );
+}
+
+function ComboMeter({ damage, heal, max }: { damage: number; heal: number; max: number }) {
+  const shown = useTween(damage, 380);
+  const ratio = max > 0 ? damage / max : 0;
+  const tier = ratio >= 0.11 ? 3 : ratio >= 0.08 ? 2 : ratio >= 0.05 ? 1 : 0;
+  return (
+    <div className={`combo-meter tier-${tier}`}>
+      <span key={damage} className="combo-value">
+        {shown}
+      </span>
+      <span className="combo-label">dégâts{heal > 0 ? ` · 💚 +${heal} PV` : ''}</span>
+    </div>
+  );
+}
+
 function ResultList({ event, state, revealed }: { event: GameEvent; state: GameState; revealed: number }) {
   const shown = (event.results ?? []).slice(0, revealed);
   const effects = shown.flatMap((r) => r.effects);
@@ -305,6 +381,7 @@ function ResultList({ event, state, revealed }: { event: GameEvent; state: GameS
   const heal = effects.filter((e) => e.action === 'heal').reduce((sum, e) => sum + e.amount, 0);
   return (
     <>
+      <ComboMeter damage={damage} heal={heal} max={state.nemesis.maxHp} />
       <ul className="hit-list">
         {shown.map((result) => {
           const player = state.players.find((p) => p.id === result.playerId);
@@ -349,10 +426,6 @@ function ResultList({ event, state, revealed }: { event: GameEvent; state: GameS
           );
         })}
       </ul>
-      <div className="hit-totals">
-        <span>⚔️ {damage} dégâts</span>
-        {heal > 0 && <span>💚 +{heal} PV</span>}
-      </div>
     </>
   );
 }

@@ -48,6 +48,11 @@ export function shake(strength: 'soft' | 'hard' = 'soft') {
   emit({ type: 'shake', strength });
 }
 
+export function punch(element: Element | null | undefined, scale = 1.06) {
+  if (!element || reducedMotion()) return;
+  element.animate([{ transform: `scale(${scale})` }, { transform: 'scale(1)' }], { duration: 280, easing: 'cubic-bezier(0.2, 1.6, 0.4, 1)' });
+}
+
 export function useTween(value: number, duration = 650): number {
   const [shown, setShown] = useState(value);
   const from = useRef(value);
