@@ -4,6 +4,16 @@ export const MORDELUNE: NemesisDef = {
   id: 'mordelune',
   name: 'Mordelune',
   title: 'la Ronce Noire',
+  portrait: '🥀',
+  lore:
+    'Née d’une graine tombée d’une lune morte, Mordelune a dormi des siècles sous la Lisière. Elle ne frappe pas seule : elle envoie ses créatures harceler les Gardiens et plante des racines qui rampent vers l’Arbre-Cœur. Plus le combat dure, plus sa colère devient terrible.',
+  tips: [
+    'Sa colère se joue en trois niveaux : les cartes deviennent plus dangereuses à mesure que le paquet s’amenuise.',
+    'Une racine qui éclot fait très mal : détruisez-la avant la fin de son compte à rebours, ou retardez-la avec l’Ours.',
+    'Les créatures agissent à chaque fin de manche : plus tôt elles tombent, moins elles coûtent.',
+    'La Mère-Sève et la Racine Sanguine la soignent : ne les laissez pas effacer vos efforts.',
+    'Si son paquet de colère s’épuise, la forêt est perdue : gardez un œil sur le compteur.',
+  ],
   intro:
     'Au cœur de la nuit, une ronce noire a percé le sol de la Lisière. Mordelune s’éveille, et sa Corruption rampe vers l’Arbre-Cœur. Gardiens, appelez vos esprits : la forêt n’a plus que vous.',
   victory:

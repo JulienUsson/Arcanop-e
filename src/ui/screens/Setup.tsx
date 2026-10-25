@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ClassSheet } from '../components/ClassSheet';
 import { Modal } from '../components/Modal';
+import { NemesisSheet } from '../components/NemesisSheet';
 import { CLASS_IDS, CLASSES, LEVELS } from '../../game/classes';
 import { DIFFICULTIES } from '../../game/difficulty';
 import { MORDELUNE, NEMESES } from '../../game/nemesis';
@@ -36,6 +37,7 @@ function loadConfig(): GameConfig {
 export function Setup({ onCreate, onBack }: { onCreate: (config: GameConfig) => void; onBack: () => void }) {
   const [config, setConfig] = useState<GameConfig>(loadConfig);
   const [sheet, setSheet] = useState<ClassId | null>(null);
+  const [nemesisSheet, setNemesisSheet] = useState(false);
 
   const updatePlayer = (id: string, patch: Partial<PlayerConfig>) =>
     setConfig((c) => ({ ...c, players: c.players.map((p) => (p.id === id ? { ...p, ...patch } : p)) }));
@@ -138,10 +140,13 @@ export function Setup({ onCreate, onBack }: { onCreate: (config: GameConfig) => 
           <label key={n.id} className={`choice${config.nemesisId === n.id ? ' selected' : ''}`}>
             <input type="radio" name="nemesis" checked={config.nemesisId === n.id} onChange={() => setConfig({ ...config, nemesisId: n.id })} />
             <strong>
-              {n.name}, {n.title}
+              {n.portrait} {n.name}, {n.title}
             </strong>
           </label>
         ))}
+        <button className="link small-link" onClick={() => setNemesisSheet(true)}>
+          📜 Fiche de la Némésis : histoire, PV, paquet de colère
+        </button>
       </section>
 
       <section className="panel">
@@ -174,6 +179,11 @@ export function Setup({ onCreate, onBack }: { onCreate: (config: GameConfig) => 
       {sheet && (
         <Modal label="Fiche de classe" onClose={() => setSheet(null)}>
           <ClassSheet classId={sheet} />
+        </Modal>
+      )}
+      {nemesisSheet && (
+        <Modal label="Fiche de la Némésis" onClose={() => setNemesisSheet(false)}>
+          <NemesisSheet nemesisId={config.nemesisId} config={config} />
         </Modal>
       )}
 

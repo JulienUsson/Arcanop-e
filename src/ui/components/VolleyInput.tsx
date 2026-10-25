@@ -3,6 +3,7 @@ import { ACTION_ICONS, ACTION_LABELS, actionMultiplier, availableActions, CLASSE
 import { effectAmount, volleyPool } from '../../game/engine';
 import { arrowLabel, arrowPoints, isYellow, RING_COLORS } from '../../game/target';
 import type { Action, Allocation, Arrow, ClassId, Submission } from '../../game/types';
+import { burstAt, flash, shake, useTween } from '../fx';
 import { play } from '../sfx';
 
 interface Props {
@@ -129,6 +130,7 @@ export function VolleyInput({ draftKey, classId, coef, arrowsPerVolley, boost = 
   const assigned = total(allocation);
   const remaining = pool - assigned;
   const crits = arrows.filter((a) => a.x).length;
+  const shownPool = useTween(pool, 700);
   const submission: Submission = { arrows, allocation: cleanAllocation(allocation) };
   const same = sameSubmission(submitted, submission);
 
@@ -137,9 +139,18 @@ export function VolleyInput({ draftKey, classId, coef, arrowsPerVolley, boost = 
     update({ arrows: next, allocation: nextPool > 0 ? { [fallback]: nextPool } : {}, editing: next.length < arrowsPerVolley });
   };
 
-  const addArrow = (arrow: Arrow) => {
+  const addArrow = (arrow: Arrow, origin?: Element) => {
     if (full) return;
     setArrows([...arrows, arrow]);
+    if (arrow.x) {
+      burstAt(origin, 'sparks', 34);
+      flash('rgba(246, 211, 45, 0.4)');
+      shake('soft');
+    } else if (arrow.score > 0) {
+      burstAt(origin, isYellow(arrow.score) ? 'sparks' : 'dust', isYellow(arrow.score) ? 14 : 8, isYellow(arrow.score) ? undefined : RING_COLORS[arrow.score].fill);
+    } else {
+      burstAt(origin, 'smoke', 6);
+    }
     navigator.vibrate?.(arrow.x ? [30, 40, 30, 40, 60] : isYellow(arrow.score) ? [20, 40, 20] : 15);
     play(arrow.x ? 'power' : 'tap');
   };
@@ -163,8 +174,9 @@ export function VolleyInput({ draftKey, classId, coef, arrowsPerVolley, boost = 
     update({ ...draft, allocation: next });
   };
 
-  const submit = () => {
+  const submit = (e: React.MouseEvent<HTMLButtonElement>) => {
     onSubmit(submission);
+    burstAt(e.currentTarget, 'leaves', 22);
     setSentKey(Date.now());
     play('send');
   };
@@ -199,7 +211,7 @@ export function VolleyInput({ draftKey, classId, coef, arrowsPerVolley, boost = 
               className={`key${key.x ? ' crit' : ''}`}
               style={{ ['--key-bg' as string]: RING_COLORS[key.score].fill, ['--key-fg' as string]: RING_COLORS[key.score].text }}
               disabled={full}
-              onClick={() => addArrow(key)}
+              onClick={(e) => addArrow(key, e.currentTarget)}
             >
               <span className="key-label">{arrowLabel(key)}</span>
               {key.x && <small>critique ×2</small>}
@@ -237,7 +249,9 @@ export function VolleyInput({ draftKey, classId, coef, arrowsPerVolley, boost = 
         </div>
       )}
       <div className="pool">
-        <span className="pool-value">{pool}</span>
+        <span className="pool-value" key={pool}>
+          {shownPool}
+        </span>
         <span className="pool-label">
           points à répartir
           {coef !== 1 && raw > 0 && (

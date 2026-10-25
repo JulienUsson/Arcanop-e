@@ -3,6 +3,7 @@ import { CLASSES } from '../../game/classes';
 import { GAUGE_MAX } from '../../game/difficulty';
 import { powerAvailability } from '../../game/engine';
 import { getCard } from '../../game/nemesis';
+import { burstAt } from '../fx';
 import type { GameState } from '../../game/types';
 import { Gauge } from './Board';
 
@@ -21,13 +22,18 @@ export function PowerPanel({ state, playerId, disabled, onActivate }: Props) {
   const availability = powerAvailability(state, playerId);
   const ready = player.gauge >= GAUGE_MAX;
 
+  const fire = (targetUid?: string) => {
+    burstAt(document.querySelector('.power-panel'), 'sparks', 24, cls.color);
+    onActivate(targetUid);
+  };
+
   const activate = () => {
     if (cls.needsRootTarget && state.roots.length > 1) setChoosing(true);
-    else onActivate(state.roots[0]?.uid);
+    else fire(state.roots[0]?.uid);
   };
 
   return (
-    <section className={`panel power-panel${ready ? ' ready' : ''}`}>
+    <section className={`panel power-panel${ready ? ' ready' : ''}`} style={{ ['--class-color' as string]: cls.color }}>
       <div className="power-head">
         <div>
           <div className="panel-title">
@@ -46,7 +52,7 @@ export function PowerPanel({ state, playerId, disabled, onActivate }: Props) {
               className="secondary"
               onClick={() => {
                 setChoosing(false);
-                onActivate(r.uid);
+                fire(r.uid);
               }}
             >
               {getCard(state.config.nemesisId, r.cardId).name} (⏳ {r.countdown})
