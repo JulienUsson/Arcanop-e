@@ -3596,3 +3596,72 @@ button.danger-solid {
 .assign-totals small {
   color: var(--muted);
 }
+
+/* PV des Gardiens */
+
+.hp-bar.archer {
+  height: 12px;
+}
+
+.hp-bar.archer .hp-fill {
+  background: linear-gradient(90deg, #2c6fb0, #5fb3f0);
+}
+
+.hp-bar.archer .hp-text {
+  font-size: 0.62rem;
+}
+
+.hp-bar.archer .floater {
+  font-size: 0.95rem;
+  top: -14px;
+}
+
+.roster li {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+}
+
+.roster-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.roster li.down .who {
+  color: var(--muted);
+}
+
+.status.down {
+  color: #ffb3bb;
+  background: rgba(226, 96, 106, 0.2);
+}
+
+.me .me-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.me .hp-bar.archer {
+  margin-top: 0.3rem;
+}
+
+.me.down {
+  border-color: var(--bad);
+  animation: danger 1.4s ease-in-out infinite;
+}
+
+.weakened-banner {
+  margin: 0 0 0.6rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  background: rgba(226, 96, 106, 0.16);
+  border: 1px solid rgba(226, 96, 106, 0.5);
+}
+
+.target-chip.down {
+  border-color: var(--bad);
+  color: #ffb3bb;
+}

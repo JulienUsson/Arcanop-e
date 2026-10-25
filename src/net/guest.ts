@@ -1,3 +1,4 @@
+import { migrateState } from '../game/engine';
 import type { GameState, Submission } from '../game/types';
 import { decode, encode, type GuestMessage, type HostMessage, type RosterEntry } from './protocol';
 import { acceptOffer, closePeer, type PeerLink } from './rtc';
@@ -40,10 +41,7 @@ export class GuestSession {
     try {
       last = JSON.parse(localStorage.getItem(LAST_KEY) ?? 'null');
     } catch {}
-    if (last?.state?.phase.kind === 'volley' && Object.values(last.state.phase.submissions).some((sub) => Array.isArray(sub) || 'allocation' in sub)) {
-      last.state.phase.submissions = {};
-    }
-    if (last?.state?.lastEvent && 'hits' in last.state.lastEvent) last.state.lastEvent = null;
+    if (last?.state) migrateState(last.state);
     this.snapshot = {
       status: last?.state ? 'lost' : 'idle',
       answer: null,

@@ -1,5 +1,5 @@
 import { ACTION_LABELS, ACTIONS, actionMultiplier, CLASSES } from './classes';
-import { CERF_HEAL, DIFFICULTIES, GAUGE_MAX, HEAL_FACTOR, REFERENCE_ARROWS } from './difficulty';
+import { CERF_ARCHER_HEAL, CERF_HEAL, DIFFICULTIES, GAUGE_MAX, HEAL_FACTOR, REFERENCE_ARROWS, WEAKENED_FACTOR } from './difficulty';
 import { getCard, getNemesis, ROUND_NARRATIONS, VOLLEY_NARRATIONS } from './nemesis';
 import { nextRandom, shuffle } from './rng';
 import { arrowLabel, arrowPoints, isYellow } from './target';
@@ -43,6 +43,8 @@ export function emptyStats(): PlayerStats {
     damageRoots: 0,
     healing: 0,
     powersUsed: 0,
+    damageTaken: 0,
+    knockouts: 0,
     bestVolley: 0,
     volleys: 0,
   };
@@ -57,7 +59,7 @@ export function scaleFactor(config: GameConfig): number {
 }
 
 function scaled(state: GameState, amount: number): number {
-  return Math.max(1, Math.round(amount * scaleFactor(state.config)));
+  return Math.max(1, Math.floor(amount * scaleFactor(state.config)));
 }
 
 export function treeDamageFactor(config: GameConfig): number {
@@ -66,12 +68,12 @@ export function treeDamageFactor(config: GameConfig): number {
 }
 
 function treeDamage(state: GameState, amount: number): number {
-  return Math.max(1, Math.round(amount * treeDamageFactor(state.config)));
+  return Math.max(1, Math.floor(amount * treeDamageFactor(state.config)));
 }
 
 export function volleyPool(arrows: Pick<Arrow, 'score' | 'x'>[], coef: number): number {
   const raw = arrows.reduce((sum, a) => sum + arrowPoints(a), 0);
-  return raw > 0 ? Math.max(1, Math.round(raw * coef)) : 0;
+  return raw > 0 ? Math.max(1, Math.floor(raw * coef)) : 0;
 }
 
 export function actionPoints(arrows: Arrow[], action: Action, coef: number): number {
@@ -81,12 +83,16 @@ export function actionPoints(arrows: Arrow[], action: Action, coef: number): num
   );
 }
 
-export function effectAmount(classId: ClassId, action: Action, points: number, boost = 1): number {
+export function isDown(player: Pick<Player, 'hp'>): boolean {
+  return player.hp <= 0;
+}
+
+export function effectAmount(classId: ClassId, action: Action, points: number, boost = 1, weakened = false): number {
   const multiplier = actionMultiplier(classId, action);
   if (multiplier === 0 || points <= 0) return 0;
-  const base = points * multiplier;
-  if (action === 'heal') return Math.max(1, Math.round(base * HEAL_FACTOR));
-  return Math.max(1, Math.round(base * boost));
+  const base = points * multiplier * (weakened ? WEAKENED_FACTOR : 1);
+  if (action === 'heal') return Math.max(1, Math.floor(base * HEAL_FACTOR));
+  return Math.max(1, Math.floor(base * boost));
 }
 
 export function createGame(config: GameConfig, seed: number, gameId: string): GameState {
@@ -100,8 +106,8 @@ export function createGame(config: GameConfig, seed: number, gameId: string): Ga
     rng = next;
     wrathDeck.push(...shuffled.slice(0, count));
   });
-  const nemesisHp = Math.round(diff.nemesisHpPerArrow * arrowSlots(config));
-  const players: Player[] = config.players.map((p) => ({ ...p, gauge: 0, stats: emptyStats() }));
+  const nemesisHp = Math.floor(diff.nemesisHpPerArrow * arrowSlots(config));
+  const players: Player[] = config.players.map((p) => ({ ...p, hp: diff.archerHp, maxHp: diff.archerHp, gauge: 0, stats: emptyStats() }));
   return {
     gameId,
     config,
@@ -179,6 +185,46 @@ function healNemesisBy(ctx: Ctx, amount: number, source: string) {
   ctx.line(`${source} rend ${heal} PV à ${nemesisName(s)}.`, 'bad');
 }
 
+export function archerDamage(state: GameState, amount: number): number {
+  return Math.max(1, Math.floor(amount * DIFFICULTIES[state.config.difficulty].archerDamage));
+}
+
+function hurtArcher(ctx: Ctx, player: Player, damage: number) {
+  const standing = player.hp > 0;
+  player.stats.damageTaken += Math.min(player.hp, damage);
+  player.hp = Math.max(0, player.hp - damage);
+  if (standing && player.hp === 0) {
+    player.stats.knockouts += 1;
+    ctx.line(`${player.name} est à terre : ses flèches et son pouvoir perdent la moitié de leur force.`, 'bad');
+  }
+}
+
+function damageArcherBy(ctx: Ctx, amount: number, source: string) {
+  const s = ctx.state;
+  if (s.players.length === 0) return;
+  const standing = s.players.filter((p) => p.hp > 0);
+  const target = ctx.pick(standing.length > 0 ? standing : s.players);
+  const damage = archerDamage(s, amount);
+  ctx.line(`${source} frappe ${target.name} : −${damage} PV.`, 'bad');
+  hurtArcher(ctx, target, damage);
+}
+
+function damageArchersBy(ctx: Ctx, amount: number, source: string) {
+  const s = ctx.state;
+  const damage = archerDamage(s, amount);
+  ctx.line(`${source} frappe tous les Gardiens : −${damage} PV chacun.`, 'bad');
+  s.players.forEach((p) => hurtArcher(ctx, p, damage));
+}
+
+function healArcher(ctx: Ctx, player: Player, amount: number): number {
+  const heal = Math.min(amount, player.maxHp - player.hp);
+  if (heal <= 0) return 0;
+  const wasDown = player.hp <= 0;
+  player.hp += heal;
+  if (wasDown) ctx.line(`${player.name} se relève et retrouve toute sa force !`, 'good');
+  return heal;
+}
+
 function drainGaugesBy(ctx: Ctx, amount: number, source: string) {
   ctx.state.players.forEach((p) => {
     p.gauge = Math.max(0, p.gauge - amount);
@@ -213,6 +259,12 @@ function spawnRoot(ctx: Ctx, card: RootCard) {
 
 function applyAttackEffect(ctx: Ctx, effect: AttackEffect, source: string) {
   switch (effect.kind) {
+    case 'damageArcher':
+      damageArcherBy(ctx, effect.amount, source);
+      break;
+    case 'damageArchers':
+      damageArchersBy(ctx, effect.amount, source);
+      break;
     case 'damageTree':
       damageTreeBy(ctx, effect.amount, source);
       break;
@@ -238,6 +290,12 @@ function applyAttackEffect(ctx: Ctx, effect: AttackEffect, source: string) {
 
 function applyCreatureEffect(ctx: Ctx, effect: CreatureEffect, source: string) {
   switch (effect.kind) {
+    case 'damageArcher':
+      damageArcherBy(ctx, effect.amount, source);
+      break;
+    case 'damageArchers':
+      damageArchersBy(ctx, effect.amount, source);
+      break;
     case 'damageTree':
       damageTreeBy(ctx, effect.amount, source);
       break;
@@ -255,6 +313,12 @@ function applyCreatureEffect(ctx: Ctx, effect: CreatureEffect, source: string) {
 
 function applyRootEffect(ctx: Ctx, effect: RootEffect, source: string) {
   switch (effect.kind) {
+    case 'damageArcher':
+      damageArcherBy(ctx, effect.amount, source);
+      break;
+    case 'damageArchers':
+      damageArchersBy(ctx, effect.amount, source);
+      break;
     case 'damageTree':
       damageTreeBy(ctx, effect.amount, source);
       break;
@@ -274,11 +338,16 @@ function applyRootEffect(ctx: Ctx, effect: RootEffect, source: string) {
 
 export function describeCard(card: CorruptionCard, state?: GameState): string {
   const tree = (n: number) => (state ? treeDamage(state, n) : n);
+  const hurt = (n: number) => (state ? archerDamage(state, n) : n);
   const sc = (n: number) => (state ? scaled(state, n) : n);
   const effectText = (e: AttackEffect | CreatureEffect | RootEffect): string => {
     switch (e.kind) {
       case 'damageTree':
         return `${tree(e.amount)} dégâts à l’Arbre-Cœur`;
+      case 'damageArcher':
+        return `${hurt(e.amount)} dégâts à un Gardien au hasard`;
+      case 'damageArchers':
+        return `${hurt(e.amount)} dégâts à chaque Gardien`;
       case 'healNemesis':
         return `soigne la Némésis de ${sc(e.amount)}`;
       case 'drainGauges':
@@ -419,7 +488,7 @@ function draw(state: GameState): GameState {
   return s;
 }
 
-const NEXT_STEP: Record<VolleyStep, VolleyStep> = { council: 'shoot', shoot: 'input', input: 'input' };
+const NEXT_STEP: Record<VolleyStep, VolleyStep> = { council: 'input', input: 'input' };
 
 function advance(state: GameState): GameState {
   if (state.phase.kind !== 'volley' || state.phase.step === 'input') return state;
@@ -433,6 +502,10 @@ function sanitizeSubmission(state: GameState, submission: Submission, player: Pl
     if (score === 0) return { score, x: false, action: null };
     const wanted = a?.action as Action;
     const action = ACTIONS.includes(wanted) && actionMultiplier(player.classId, wanted) > 0 ? wanted : specialty;
+    if (action === 'heal') {
+      const target = state.players.some((p) => p.id === a?.target) ? (a.target as string) : null;
+      return { score, x: score === 10 && a?.x === true, action, target };
+    }
     if (action === 'creatures' || action === 'roots') {
       const list = action === 'creatures' ? state.creatures : state.roots;
       const target = list.some((m) => m.uid === a?.target) ? (a.target as string) : null;
@@ -481,6 +554,13 @@ export function targetOptions(state: GameState, kind: TargetKind): TargetOption[
     .map((r) => ({ uid: r.uid, name: cardName(state, r.cardId), hp: r.hp, maxHp: r.maxHp, countdown: r.countdown }));
 }
 
+export function healOptions(state: GameState): TargetOption[] {
+  return [
+    { uid: 'tree', name: 'Arbre-Cœur', hp: state.tree.hp, maxHp: state.tree.maxHp },
+    ...state.players.map((p) => ({ uid: p.id, name: p.name, hp: p.hp, maxHp: p.maxHp })),
+  ];
+}
+
 export interface ArrowGroup {
   action: Action;
   target: string | null;
@@ -492,7 +572,7 @@ export function groupArrows(arrows: Arrow[]): ArrowGroup[] {
   for (const action of ACTIONS) {
     for (const arrow of arrows) {
       if (arrow.action !== action || arrow.score <= 0) continue;
-      const target = action === 'creatures' || action === 'roots' ? (arrow.target ?? null) : null;
+      const target = action === 'nemesis' ? null : (arrow.target ?? null);
       const group = groups.find((g) => g.action === action && g.target === target);
       if (group) group.arrows.push(arrow);
       else groups.push({ action, target, arrows: [arrow] });
@@ -542,11 +622,11 @@ function resolve(state: GameState): GameState {
   const s = clone(state);
   const ctx = new Ctx(s);
   const phase = state.phase;
-  const boost = s.wolfBoost > 0 ? 2 : 1;
+  const boost = s.wolfBoost > 0 ? s.wolfBoost : 1;
   const totals = { nemesis: 0, creatures: 0, roots: 0, heal: 0 };
   const results: VolleyResult[] = [];
   ctx.extra = { results, boosted: boost > 1 };
-  if (boost > 1) ctx.line('La Meute chasse : les dégâts de cette volée sont doublés !', 'power');
+  if (boost > 1) ctx.line(`La Meute chasse : les dégâts de cette volée sont multipliés par ${String(boost).replace('.', ',')} !`, 'power');
   for (const player of s.players) {
     const submission = phase.submissions[player.id];
     if (!submission) {
@@ -568,13 +648,21 @@ function resolve(state: GameState): GameState {
       }
     }
     const pool = volleyPool(arrows, player.coef);
+    const weakened = isDown(player);
+    if (weakened) ctx.line(`${player.name} est à terre : ses flèches comptent moitié.`, 'bad');
     const effects: Effect[] = [];
     for (const group of groupArrows(arrows)) {
       const action = group.action;
       const points = volleyPool(group.arrows, player.coef);
-      const amount = effectAmount(player.classId, action, points, boost);
+      const amount = effectAmount(player.classId, action, points, boost, weakened);
       if (amount <= 0) continue;
-      if (action === 'heal') {
+      const patient = action === 'heal' ? s.players.find((p) => p.id === group.target) : undefined;
+      if (patient) {
+        const heal = healArcher(ctx, patient, amount);
+        player.stats.healing += heal;
+        totals.heal += heal;
+        effects.push({ action, points, amount: heal, target: patient.name });
+      } else if (action === 'heal') {
         const heal = Math.min(amount, s.tree.maxHp - s.tree.hp);
         s.tree.hp += heal;
         player.stats.healing += heal;
@@ -609,7 +697,7 @@ function resolve(state: GameState): GameState {
   if (totals.nemesis) summary.push(`${totals.nemesis} dégâts à ${nemesisName(s)}`);
   if (totals.creatures) summary.push(`${totals.creatures} aux créatures`);
   if (totals.roots) summary.push(`${totals.roots} aux racines`);
-  if (totals.heal) summary.push(`${totals.heal} PV rendus à l’Arbre-Cœur`);
+  if (totals.heal) summary.push(`${totals.heal} PV soignés`);
   ctx.line(`Bilan : ${summary.join(', ') || 'aucun effet'}.`, 'good');
   s.phase = { kind: 'turn' };
   if (checkEnd(ctx)) return s;
@@ -638,7 +726,9 @@ export function powerAvailability(state: GameState, playerId: string): { ok: boo
       if (state.wrathDeck.length === 0) return { ok: false, reason: 'Paquet de colère vide' };
       return state.revealed ? { ok: false, reason: 'Carte déjà révélée' } : { ok: true };
     case 'cerf':
-      return state.tree.hp >= state.tree.maxHp ? { ok: false, reason: 'Arbre-Cœur intact' } : { ok: true };
+      return state.tree.hp >= state.tree.maxHp && state.players.every((p) => p.hp >= p.maxHp)
+        ? { ok: false, reason: 'Arbre-Cœur et Gardiens intacts' }
+        : { ok: true };
   }
 }
 
@@ -648,11 +738,13 @@ function usePower(state: GameState, playerId: string, targetUid?: string): GameS
   const ctx = new Ctx(s);
   const player = s.players.find((p) => p.id === playerId)!;
   const cls = CLASSES[player.classId];
+  const factor = isDown(player) ? WEAKENED_FACTOR : 1;
+  if (factor < 1) ctx.line(`${player.name} est à terre : son pouvoir n’agit qu’à moitié.`, 'bad');
   let narration = '';
   switch (player.classId) {
     case 'loup':
-      s.wolfBoost = 1;
-      ctx.line(`${player.name} pousse le ${cls.powerName} : dégâts doublés à la prochaine volée.`, 'power');
+      s.wolfBoost = 1 + factor;
+      ctx.line(`${player.name} pousse le ${cls.powerName} : dégâts ×${String(s.wolfBoost).replace('.', ',')} à la prochaine volée.`, 'power');
       narration = 'Un hurlement monte de la Lisière. Les esprits-loups courent aux côtés des flèches.';
       break;
     case 'ours': {
@@ -668,10 +760,12 @@ function usePower(state: GameState, playerId: string, targetUid?: string): GameS
       narration = 'Les yeux du Hibou percent la nuit : la prochaine ruse de la Corruption est dévoilée.';
       break;
     case 'cerf': {
-      const heal = Math.min(CERF_HEAL, s.tree.maxHp - s.tree.hp);
+      const archerHeal = Math.floor(CERF_ARCHER_HEAL * factor);
+      const heal = Math.min(Math.floor(CERF_HEAL * factor), s.tree.maxHp - s.tree.hp);
       s.tree.hp += heal;
-      player.stats.healing += heal;
-      ctx.line(`${player.name} lance le ${cls.powerName} : +${heal} PV à l’Arbre-Cœur.`, 'power');
+      const archers = s.players.reduce((sum, p) => sum + healArcher(ctx, p, archerHeal), 0);
+      player.stats.healing += heal + archers;
+      ctx.line(`${player.name} lance le ${cls.powerName} : +${heal} PV à l’Arbre-Cœur, +${archerHeal} PV à chaque Gardien.`, 'power');
       narration = 'Le brame du Cerf résonne et une sève dorée remonte dans l’écorce de l’Arbre-Cœur.';
       break;
     }
@@ -681,6 +775,26 @@ function usePower(state: GameState, playerId: string, targetUid?: string): GameS
   ctx.extra.playerId = player.id;
   ctx.event('power', `${cls.emoji} ${cls.powerName}`, narration, 'power');
   return s;
+}
+
+export function migrateState(state: GameState): GameState {
+  if (state.phase.kind === 'volley') {
+    if ((state.phase.step as string) !== 'council') state.phase.step = 'input';
+    if (Object.values(state.phase.submissions).some((sub) => Array.isArray(sub) || 'allocation' in sub)) state.phase.submissions = {};
+  }
+  if (state.lastEvent && (!state.lastEvent.kind || 'hits' in state.lastEvent)) state.lastEvent = null;
+  if (state.wolfBoost === 1) state.wolfBoost = 2;
+  const hp = DIFFICULTIES[state.config.difficulty].archerHp;
+  state.players.forEach((p) => {
+    p.stats.crits ??= 0;
+    p.stats.damageTaken ??= 0;
+    p.stats.knockouts ??= 0;
+    if (typeof p.hp !== 'number') {
+      p.hp = hp;
+      p.maxHp = hp;
+    }
+  });
+  return state;
 }
 
 export function reduce(state: GameState, action: GameAction): GameState {

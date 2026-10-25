@@ -39,7 +39,7 @@ function useDelta(value: number, max: number): { floaters: Floater[]; pulse: 'up
   return { floaters, pulse: pulse.dir, pulseKey: pulse.key, delta: pulse.delta };
 }
 
-export function HpBar({ hp, max, tone }: { hp: number; max: number; tone: 'nemesis' | 'tree' | 'creature' | 'root' }) {
+export function HpBar({ hp, max, tone }: { hp: number; max: number; tone: 'nemesis' | 'tree' | 'creature' | 'root' | 'archer' }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (hp / max) * 100)) : 0;
   const { floaters, pulse, pulseKey } = useDelta(hp, max);
   const shown = useTween(hp, 450);
@@ -185,7 +185,9 @@ export function Board({ state, roster, you }: Props) {
         <div className="wrath-info" title="Cartes de colère restantes">
           <span className="wrath-stack">📜</span> {state.wrathDeck.length}
         </div>
-        {state.wolfBoost > 0 && <div className="badge power">🐺 La Meute chasse : dégâts ×2 à la prochaine volée</div>}
+        {state.wolfBoost > 0 && (
+          <div className="badge power">🐺 La Meute chasse : dégâts ×{String(state.wolfBoost).replace('.', ',')} à la prochaine volée</div>
+        )}
         {revealedCard && (
           <div className="revealed">
             🦉 Prochaine carte : <strong>{revealedCard.name}</strong> — {describeCard(revealedCard, state)}
@@ -245,18 +247,22 @@ export function Board({ state, roster, you }: Props) {
             const entry = roster.find((r) => r.playerId === p.id);
             const submitted = phase.kind === 'volley' && !!phase.submissions[p.id];
             return (
-              <li key={p.id} className={p.id === you ? 'you' : ''}>
-                <span className="who">
-                  <span className="avatar" style={{ ['--class-color' as string]: CLASSES[p.classId].color }}>
-                    {CLASSES[p.classId].emoji}
+              <li key={p.id} className={`${p.id === you ? 'you' : ''}${p.hp <= 0 ? ' down' : ''}`}>
+                <div className="roster-row">
+                  <span className="who">
+                    <span className="avatar" style={{ ['--class-color' as string]: CLASSES[p.classId].color }}>
+                      {p.hp <= 0 ? '💤' : CLASSES[p.classId].emoji}
+                    </span>
+                    {p.name}
+                    {p.hp <= 0 && <span className="status down">à terre ×½</span>}
+                    {entry && entry.status !== 'free' && <span className={`status ${entry.status}`}>{STATUS_LABEL[entry.status]}</span>}
                   </span>
-                  {p.name}
-                  {entry && entry.status !== 'free' && <span className={`status ${entry.status}`}>{STATUS_LABEL[entry.status]}</span>}
-                </span>
-                <span className="right">
-                  {phase.kind === 'volley' && <span className={`submitted${submitted ? ' yes' : ''}`}>{submitted ? '✓' : '…'}</span>}
-                  <Gauge value={p.gauge} />
-                </span>
+                  <span className="right">
+                    {phase.kind === 'volley' && <span className={`submitted${submitted ? ' yes' : ''}`}>{submitted ? '✓' : '…'}</span>}
+                    <Gauge value={p.gauge} />
+                  </span>
+                </div>
+                <HpBar hp={p.hp} max={p.maxHp} tone="archer" />
               </li>
             );
           })}

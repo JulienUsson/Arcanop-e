@@ -1,7 +1,7 @@
 import { useState, useSyncExternalStore } from 'react';
 import { suggestion } from '../../game/advice';
 import { CLASSES } from '../../game/classes';
-import { nextCardLabel, targetOptions } from '../../game/engine';
+import { healOptions, nextCardLabel, targetOptions } from '../../game/engine';
 import type { HostSession } from '../../net/host';
 import { Board } from '../components/Board';
 import { ClassSheet } from '../components/ClassSheet';
@@ -62,7 +62,7 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
 
   const advance = () => {
     session.dispatch({ type: 'advance' });
-    if (phase.kind === 'volley' && phase.step === 'shoot' && freePlayers.length > 0) setTab('saisie');
+    if (phase.kind === 'volley' && phase.step === 'council' && freePlayers.length > 0) setTab('saisie');
   };
 
   const undo = snap.canUndo && (
@@ -119,11 +119,6 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
                 )}
                 {phase.kind === 'volley' && phase.step === 'council' && (
                   <button className="primary big glow" onClick={advance}>
-                    🏹 Au pas de tir !
-                  </button>
-                )}
-                {phase.kind === 'volley' && phase.step === 'shoot' && (
-                  <button className="primary big glow" onClick={advance}>
                     🎯 Flèches tirées : saisie
                   </button>
                 )}
@@ -175,7 +170,9 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
                 coef={selectedPlayer.coef}
                 arrowsPerVolley={state.config.arrowsPerVolley}
                 boost={state.wolfBoost > 0 ? 2 : 1}
-                targets={{ creatures: targetOptions(state, 'creatures'), roots: targetOptions(state, 'roots') }}
+                targets={{ creatures: targetOptions(state, 'creatures'), roots: targetOptions(state, 'roots'), heal: healOptions(state) }}
+                suggestedTarget={suggestion(state, selectedPlayer.id)?.target}
+                weakened={selectedPlayer.hp <= 0}
                 suggested={suggestion(state, selectedPlayer.id)?.action}
                 submitted={phase.kind === 'volley' ? phase.submissions[selectedPlayer.id] : undefined}
                 canSubmit={phase.kind === 'volley'}

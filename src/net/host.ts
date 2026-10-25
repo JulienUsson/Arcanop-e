@@ -1,4 +1,4 @@
-import { reduce } from '../game/engine';
+import { migrateState, reduce } from '../game/engine';
 import type { GameAction, GameState } from '../game/types';
 import { decode, encode, type GuestMessage, type HostMessage, type RosterEntry } from './protocol';
 import { acceptAnswer, closePeer, createOffer, type PeerLink } from './rtc';
@@ -55,14 +55,7 @@ export class HostSession {
   static load(): HostSession | null {
     const saved = HostSession.saved();
     if (!saved) return null;
-    const { state } = saved;
-    if (state.phase.kind === 'volley') {
-      if (!state.phase.step) state.phase.step = 'input';
-      if (Object.values(state.phase.submissions).some((sub) => Array.isArray(sub) || 'allocation' in sub)) state.phase.submissions = {};
-    }
-    if (state.lastEvent && (!state.lastEvent.kind || 'hits' in state.lastEvent)) state.lastEvent = null;
-    state.players.forEach((p) => (p.stats.crits ??= 0));
-    return new HostSession(state, saved.claims);
+    return new HostSession(migrateState(saved.state), saved.claims);
   }
 
   static saved(): Saved | null {

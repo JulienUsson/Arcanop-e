@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { suggestion } from '../../game/advice';
 import { CLASSES } from '../../game/classes';
-import { targetOptions } from '../../game/engine';
+import { healOptions, targetOptions } from '../../game/engine';
 import { getNemesis } from '../../game/nemesis';
 import type { ClassId } from '../../game/types';
 import type { GuestSession } from '../../net/guest';
-import { Board } from '../components/Board';
+import { Board, HpBar } from '../components/Board';
 import { ClassSheet } from '../components/ClassSheet';
 import { CopyCode } from '../components/CopyCode';
 import { useConfirm } from '../components/Dialog';
@@ -195,16 +195,18 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
     <div className="screen guest">
       <EventStage state={state} event={stage.event} onClose={stage.close} />
       {!connected && joinPanel}
-      <header className="me" style={{ ['--class-color' as string]: cls.color }}>
-        <span className="avatar big">{cls.emoji}</span>
-        <div>
+      <header className={`me${me.hp <= 0 ? ' down' : ''}`} style={{ ['--class-color' as string]: cls.color }}>
+        <span className="avatar big">{me.hp <= 0 ? '💤' : cls.emoji}</span>
+        <div className="me-info">
           <strong>{me.name}</strong>
           <small>
             {cls.spirit} · ×{me.coef}
           </small>
+          <HpBar hp={me.hp} max={me.maxHp} tone="archer" />
         </div>
         <span className={`conn ${connected ? 'on' : 'off'}`}>{connected ? '● en ligne' : '● hors ligne'}</span>
       </header>
+      {me.hp <= 0 && <p className="weakened-banner">🩹 Vous êtes à terre : vos flèches et votre pouvoir comptent moitié. Un soin vous relèvera.</p>}
       <nav className="tabs">
         <button className={tab === 'cible' ? 'active' : ''} onClick={() => setTab('cible')}>
           🎯 Cible{volley && !submitted ? ' •' : ''}
@@ -226,7 +228,9 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
             coef={me.coef}
             arrowsPerVolley={state.config.arrowsPerVolley}
             boost={state.wolfBoost > 0 ? 2 : 1}
-            targets={{ creatures: targetOptions(state, 'creatures'), roots: targetOptions(state, 'roots') }}
+            targets={{ creatures: targetOptions(state, 'creatures'), roots: targetOptions(state, 'roots'), heal: healOptions(state) }}
+            suggestedTarget={suggestion(state, me.id)?.target}
+            weakened={me.hp <= 0}
             suggested={suggestion(state, me.id)?.action}
             submitted={submitted}
             canSubmit={connected && !!volley}

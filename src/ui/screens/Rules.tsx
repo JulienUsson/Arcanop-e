@@ -56,6 +56,24 @@ export function Rules({ onBack }: { onBack: () => void }) {
         </p>
       </section>
       <section className="panel">
+        <div className="panel-title">Les Gardiens ont des PV</div>
+        <ul>
+          <li>Chaque archer a des PV (20, 15 ou 12 selon la difficulté).</li>
+          <li>
+            Certaines attaques et créatures frappent <strong>un Gardien au hasard</strong> (parmi ceux encore debout), d’autres
+            <strong> tous les Gardiens</strong>.
+          </li>
+          <li>
+            À 0 PV, l’archer est <strong>à terre</strong> : il continue de tirer, mais ses flèches et son pouvoir ne comptent plus que
+            moitié.
+          </li>
+          <li>
+            Une flèche de {ACTION_ICONS.heal} Soin peut viser un Gardien plutôt que l’Arbre-Cœur ; un archer à terre soigné se relève avec
+            toute sa force. Le pouvoir du Cerf soigne aussi chaque Gardien.
+          </li>
+        </ul>
+      </section>
+      <section className="panel">
         <div className="panel-title">Créatures ou racines ?</div>
         <ul>
           <li>
@@ -86,14 +104,16 @@ export function Rules({ onBack }: { onBack: () => void }) {
         <div className="panel-title">Une manche</div>
         <ol>
           <li>Un paquet d’ordre de tour est mélangé : des cartes Volée 🏹 et des cartes Némésis 💀.</li>
-          <li>Carte Volée : 🗣️ conseil autour du tableau de combat, 🏹 tir réel, 🎯 saisie des scores et assignation des flèches, ⚔️ résolution par l’hôte.</li>
+          <li>Carte Volée : 🏹 conseil autour du tableau de combat puis tir réel, 🎯 saisie des scores et assignation des flèches, ⚔️ résolution par l’hôte.</li>
           <li>Carte Némésis : elle joue une carte de son paquet de colère (attaque, créature ou racine).</li>
           <li>Fin de manche : chaque créature agit et le compte à rebours des racines diminue.</li>
         </ol>
         <p>
           Victoire si la Némésis tombe à 0 PV. Défaite si l’Arbre-Cœur tombe à 0 PV ou si la Némésis doit jouer alors que son paquet de
-          colère est vide.
+          colère est vide : la carte qui épuise le paquet est jouée normalement, mais au tour de Némésis suivant, la Corruption l’emporte.
+          Les créatures et racines déjà en jeu continuent d’agir jusque-là.
         </p>
+        <p className="hint">Tous les multiplicateurs (coefficient, spécialité, soin, à terre, Meute) sont arrondis à l’entier inférieur.</p>
       </section>
       <button className="primary big wide" onClick={onBack}>
         Retour

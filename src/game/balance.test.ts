@@ -18,7 +18,7 @@ function gaussian(rng: Rng): number {
 
 function intent(state: GameState, classId: ClassId): Action {
   const has = (a: Action) => actionMultiplier(classId, a) > 0;
-  if (has('heal') && state.tree.hp < state.tree.maxHp * 0.6) return 'heal';
+  if (has('heal') && (state.tree.hp < state.tree.maxHp * 0.6 || state.players.some((p) => p.hp <= p.maxHp * 0.3))) return 'heal';
   if (has('roots') && state.roots.some((r) => r.countdown <= 1)) return 'roots';
   if (classId === 'ours' && state.creatures.length > 0) return 'creatures';
   if (classId === 'hibou' && state.roots.length > 0) return 'roots';
@@ -29,7 +29,10 @@ function intent(state: GameState, classId: ClassId): Action {
 function volley(state: GameState, classId: ClassId, mean: number, count: number, rng: Rng): Submission {
   const arrows = Array.from({ length: count }, () => {
     const score = Math.max(0, Math.min(10, Math.round(mean + gaussian(rng) * 2)));
-    return { score, x: score === 10 && random(rng) < 0.35, action: score > 0 ? intent(state, classId) : null };
+    const action = score > 0 ? intent(state, classId) : null;
+    const hurt = [...state.players].sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+    const target = action === 'heal' && state.tree.hp >= state.tree.maxHp * 0.6 && hurt ? hurt.id : null;
+    return { score, x: score === 10 && random(rng) < 0.35, action, target };
   });
   return { arrows };
 }
@@ -38,6 +41,7 @@ function simulate(difficulty: Difficulty, classes: ClassId[], mean: number, game
   let wins = 0;
   let deckOuts = 0;
   let volleys = 0;
+  let knockouts = 0;
   for (let game = 0; game < games; game++) {
     const rng = { value: game * 7919 + 1 };
     const config: GameConfig = {
@@ -63,9 +67,10 @@ function simulate(difficulty: Difficulty, classes: ClassId[], mean: number, game
     if (s.phase.result === 'victory') wins++;
     if (s.phase.reason.includes('paquet')) deckOuts++;
     volleys += s.volleyCount;
+    knockouts += s.players.reduce((n, p) => n + p.stats.knockouts, 0);
   }
   const rate = ((wins / games) * 100).toFixed(0);
-  return `${difficulty.padEnd(9)} ${classes.join(',').padEnd(34)} moy ${mean} × ${arrows} : ${rate}% victoires, ${deckOuts} paquets épuisés, ${(volleys / games).toFixed(1)} volées`;
+  return `${difficulty.padEnd(9)} ${classes.join(',').padEnd(34)} moy ${mean} × ${arrows} : ${rate}% victoires, ${deckOuts} paquets épuisés, ${(volleys / games).toFixed(1)} volées, ${(knockouts / games).toFixed(1)} archers à terre`;
 }
 
 it.skipIf(!process.env.BALANCE)('équilibrage', () => {

@@ -41,28 +41,37 @@ export interface PlayerStats {
   damageRoots: number;
   healing: number;
   powersUsed: number;
+  damageTaken: number;
+  knockouts: number;
   bestVolley: number;
   volleys: number;
 }
 
 export interface Player extends PlayerConfig {
+  hp: number;
+  maxHp: number;
   gauge: number;
   stats: PlayerStats;
 }
 
+export type ArcherEffect = { kind: 'damageArcher'; amount: number } | { kind: 'damageArchers'; amount: number };
+
 export type CreatureEffect =
+  | ArcherEffect
   | { kind: 'damageTree'; amount: number }
   | { kind: 'healNemesis'; amount: number }
   | { kind: 'drainGauges'; amount: number }
   | { kind: 'healCreatures'; amount: number };
 
 export type RootEffect =
+  | ArcherEffect
   | { kind: 'damageTree'; amount: number }
   | { kind: 'healNemesis'; amount: number }
   | { kind: 'spawn'; cardId: string }
   | { kind: 'drainGauges'; amount: number };
 
 export type AttackEffect =
+  | ArcherEffect
   | { kind: 'damageTree'; amount: number }
   | { kind: 'drainGauges'; amount: number }
   | { kind: 'healNemesis'; amount: number }
@@ -131,7 +140,7 @@ export interface Root {
 
 export type TurnCard = 'volley' | 'nemesis';
 
-export type VolleyStep = 'council' | 'shoot' | 'input';
+export type VolleyStep = 'council' | 'input';
 
 export type Phase =
   | { kind: 'lobby' }

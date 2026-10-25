@@ -1,5 +1,5 @@
 import { ACTION_ICONS, ACTION_LABELS, actionMultiplier, CLASSES } from '../../game/classes';
-import { CERF_HEAL, GAUGE_MAX } from '../../game/difficulty';
+import { CERF_ARCHER_HEAL, CERF_HEAL, GAUGE_MAX } from '../../game/difficulty';
 import { CRIT_POINTS } from '../../game/target';
 import type { Action, ClassId } from '../../game/types';
 
@@ -9,7 +9,7 @@ const ACTION_HELP: Record<Action, string> = {
   nemesis: 'Dégâts directs à la Némésis.',
   creatures: 'Abat les créatures, qui agissent à chaque fin de manche. Cible choisie par flèche.',
   roots: 'Détruit les racines avant qu’elles n’éclosent. Cible choisie par flèche.',
-  heal: 'Rend à l’Arbre-Cœur la moitié des points des flèches assignées.',
+  heal: 'Rend la moitié des points des flèches à l’Arbre-Cœur ou à un Gardien.',
 };
 
 export function ClassSheet({ classId }: { classId: ClassId }) {
@@ -55,7 +55,7 @@ export function ClassSheet({ classId }: { classId: ClassId }) {
           Pouvoir : {cls.powerName}
         </h3>
         <p>
-          {classId === 'cerf' ? `Soigne l’Arbre-Cœur de ${CERF_HEAL} PV.` : cls.powerText}
+          {classId === 'cerf' ? `Soigne l’Arbre-Cœur de ${CERF_HEAL} PV et chaque Gardien de ${CERF_ARCHER_HEAL} PV.` : cls.powerText}
         </p>
         <p className="hint">
           Se charge avec {GAUGE_MAX} flèches dans le jaune (9, 10 ou X), puis s’active quand vous le décidez.
