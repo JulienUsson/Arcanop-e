@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { arrowLabel, arrowPoints, isYellow } from './target';
 
 describe('flèches', () => {
-  it('double la valeur d’un X', () => {
-    expect(arrowPoints({ score: 10, x: true })).toBe(20);
+  it('compte un X comme un coup critique à 15 points', () => {
+    expect(arrowPoints({ score: 10, x: true })).toBe(15);
     expect(arrowPoints({ score: 10, x: false })).toBe(10);
     expect(arrowPoints({ score: 0, x: false })).toBe(0);
   });

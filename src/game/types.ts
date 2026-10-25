@@ -7,13 +7,11 @@ export type Difficulty = 'facile' | 'normal' | 'difficile';
 export interface Arrow {
   score: number;
   x: boolean;
+  action: Action | null;
 }
-
-export type Allocation = Partial<Record<Action, number>>;
 
 export interface Submission {
   arrows: Arrow[];
-  allocation: Allocation;
 }
 
 export interface PlayerConfig {

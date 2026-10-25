@@ -1,17 +1,17 @@
 import type { Arrow } from './types';
 
-export const CRIT_MULTIPLIER = 2;
+export const CRIT_POINTS = 15;
 
 export function isYellow(score: number): boolean {
   return score >= 9;
 }
 
-export function arrowPoints(arrow: Arrow): number {
+export function arrowPoints(arrow: Pick<Arrow, 'score' | 'x'>): number {
   if (arrow.score <= 0) return 0;
-  return arrow.x ? arrow.score * CRIT_MULTIPLIER : arrow.score;
+  return arrow.x ? CRIT_POINTS : arrow.score;
 }
 
-export function arrowLabel(arrow: Arrow): string {
+export function arrowLabel(arrow: Pick<Arrow, 'score' | 'x'>): string {
   if (arrow.x) return 'X';
   return arrow.score === 0 ? 'M' : String(arrow.score);
 }

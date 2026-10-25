@@ -1,6 +1,6 @@
 import { it } from 'vitest';
 import { actionMultiplier } from './classes';
-import { createGame, powerAvailability, reduce, volleyPool } from './engine';
+import { createGame, powerAvailability, reduce } from './engine';
 import type { Action, ClassId, Difficulty, GameConfig, GameState, Submission } from './types';
 
 interface Rng {
@@ -26,12 +26,12 @@ function intent(state: GameState, classId: ClassId): Action {
   return 'nemesis';
 }
 
-function volley(state: GameState, classId: ClassId, coef: number, mean: number, count: number, rng: Rng): Submission {
+function volley(state: GameState, classId: ClassId, mean: number, count: number, rng: Rng): Submission {
   const arrows = Array.from({ length: count }, () => {
     const score = Math.max(0, Math.min(10, Math.round(mean + gaussian(rng) * 2)));
-    return { score, x: score === 10 && random(rng) < 0.35 };
+    return { score, x: score === 10 && random(rng) < 0.35, action: score > 0 ? intent(state, classId) : null };
   });
-  return { arrows, allocation: { [intent(state, classId)]: volleyPool(arrows, coef) } };
+  return { arrows };
 }
 
 function simulate(difficulty: Difficulty, classes: ClassId[], mean: number, games: number, arrows = 3): string {
@@ -56,7 +56,7 @@ function simulate(difficulty: Difficulty, classes: ClassId[], mean: number, game
         if (powerAvailability(s, p.id).ok) s = reduce(s, { type: 'power', playerId: p.id, targetUid: s.roots[0]?.uid });
       }
       for (const p of s.players) {
-        s = reduce(s, { type: 'submit', playerId: p.id, submission: volley(s, p.classId, p.coef, mean, arrows, rng) });
+        s = reduce(s, { type: 'submit', playerId: p.id, submission: volley(s, p.classId, mean, arrows, rng) });
       }
       s = reduce(s, { type: 'resolve' });
     }

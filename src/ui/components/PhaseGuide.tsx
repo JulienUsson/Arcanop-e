@@ -63,7 +63,7 @@ function texts(state: GameState, role: 'host' | 'guest', playerId?: string | nul
     }
     return {
       title: 'Saisie des scores',
-      text: role === 'host' ? `${done}/${total} archers ont saisi leur volée.` : 'Saisissez le score de chaque flèche (cordon : zone inférieure), puis répartissez vos points.',
+      text: role === 'host' ? `${done}/${total} archers ont saisi leur volée.` : 'Saisissez le score de chaque flèche (cordon : zone inférieure), puis assignez chaque flèche à une action.',
     };
   }
   return { title: phase.result === 'victory' ? 'Victoire !' : 'Défaite…', text: phase.reason };

@@ -1,11 +1,10 @@
-import { ACTION_LABELS, ACTIONS, actionMultiplier, availableActions, CLASSES } from './classes';
+import { ACTION_LABELS, ACTIONS, actionMultiplier, CLASSES } from './classes';
 import { CERF_HEAL, DIFFICULTIES, GAUGE_MAX, HEAL_FACTOR, REFERENCE_ARROWS } from './difficulty';
 import { getCard, getNemesis, ROUND_NARRATIONS, VOLLEY_NARRATIONS } from './nemesis';
 import { nextRandom, shuffle } from './rng';
 import { arrowLabel, arrowPoints, isYellow } from './target';
 import type {
   Action,
-  Allocation,
   Arrow,
   AttackEffect,
   CorruptionCard,
@@ -70,9 +69,16 @@ function treeDamage(state: GameState, amount: number): number {
   return Math.max(1, Math.round(amount * treeDamageFactor(state.config)));
 }
 
-export function volleyPool(arrows: Arrow[], coef: number): number {
+export function volleyPool(arrows: Pick<Arrow, 'score' | 'x'>[], coef: number): number {
   const raw = arrows.reduce((sum, a) => sum + arrowPoints(a), 0);
   return raw > 0 ? Math.max(1, Math.round(raw * coef)) : 0;
+}
+
+export function actionPoints(arrows: Arrow[], action: Action, coef: number): number {
+  return volleyPool(
+    arrows.filter((a) => a.action === action),
+    coef,
+  );
 }
 
 export function effectAmount(classId: ClassId, action: Action, points: number, boost = 1): number {
@@ -423,23 +429,15 @@ function advance(state: GameState): GameState {
 }
 
 function sanitizeSubmission(submission: Submission, player: Player, max: number): Submission {
+  const specialty = CLASSES[player.classId].specialty;
   const arrows: Arrow[] = (Array.isArray(submission?.arrows) ? submission.arrows : []).slice(0, max).map((a) => {
     const score = Math.max(0, Math.min(10, Math.round(Number(a?.score) || 0)));
-    return { score, x: score === 10 && a?.x === true };
+    if (score === 0) return { score, x: false, action: null };
+    const wanted = a?.action as Action;
+    const action = ACTIONS.includes(wanted) && actionMultiplier(player.classId, wanted) > 0 ? wanted : specialty;
+    return { score, x: score === 10 && a?.x === true, action };
   });
-  let remaining = volleyPool(arrows, player.coef);
-  const allocation: Allocation = {};
-  for (const action of availableActions(player.classId)) {
-    const wanted = Math.max(0, Math.round(Number(submission?.allocation?.[action]) || 0));
-    const points = Math.min(wanted, remaining);
-    if (points > 0) allocation[action] = points;
-    remaining -= points;
-  }
-  if (remaining > 0) {
-    const specialty = CLASSES[player.classId].specialty;
-    allocation[specialty] = (allocation[specialty] ?? 0) + remaining;
-  }
-  return { arrows, allocation };
+  return { arrows };
 }
 
 function submit(state: GameState, playerId: string, submission: Submission): GameState {
@@ -514,7 +512,7 @@ function resolve(state: GameState): GameState {
       ctx.line(`${player.name} n’a pas saisi de volée.`);
       continue;
     }
-    const { arrows, allocation } = submission;
+    const { arrows } = submission;
     let volleyScore = 0;
     for (const arrow of arrows) {
       player.stats.arrows += 1;
@@ -531,7 +529,7 @@ function resolve(state: GameState): GameState {
     const pool = volleyPool(arrows, player.coef);
     const effects: Effect[] = [];
     for (const action of ACTIONS) {
-      const points = allocation[action] ?? 0;
+      const points = actionPoints(arrows, action, player.coef);
       const amount = effectAmount(player.classId, action, points, boost);
       if (amount <= 0) continue;
       if (action === 'heal') {

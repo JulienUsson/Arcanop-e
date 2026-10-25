@@ -322,8 +322,11 @@ function ResultList({ event, state, revealed }: { event: GameEvent; state: GameS
                 </span>
                 <span className="result-arrows">
                   {result.arrows.map((a, i) => (
-                    <span key={i} className={`score-slot filled small${a.x ? ' crit' : ''}`} style={{ background: RING_COLORS[a.score].fill, color: RING_COLORS[a.score].text }}>
-                      {arrowLabel(a)}
+                    <span key={i} className="result-arrow">
+                      <span className={`score-slot filled small${a.x ? ' crit' : ''}`} style={{ background: RING_COLORS[a.score].fill, color: RING_COLORS[a.score].text }}>
+                        {arrowLabel(a)}
+                      </span>
+                      <span className="result-arrow-action">{a.action ? ACTION_ICONS[a.action] : '✗'}</span>
                     </span>
                   ))}
                 </span>
