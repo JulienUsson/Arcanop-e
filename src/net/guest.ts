@@ -152,10 +152,6 @@ export class GuestSession {
     if (this.snapshot.you) this.send({ t: 'power', playerId: this.snapshot.you, targetUid });
   }
 
-  focus(kind: 'creature' | 'root', uid: string | null) {
-    this.send({ t: 'focus', kind, uid });
-  }
-
   forget() {
     closePeer(this.link);
     this.link = null;

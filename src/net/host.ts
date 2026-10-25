@@ -260,9 +260,6 @@ export class HostSession {
         if (msg.playerId !== conn.playerId) return;
         this.dispatch({ type: 'power', playerId: msg.playerId, targetUid: msg.targetUid });
         break;
-      case 'focus':
-        this.dispatch({ type: 'focus', kind: msg.kind, uid: msg.uid });
-        break;
     }
   }
 

@@ -49,7 +49,9 @@ Chaque archer tire ses flèches (3 par défaut) sur un blason classique, puis sa
 
 ### Les actions
 - **Némésis** : dégâts directs.
-- **Créatures / Racines** : dégâts à la cible désignée 🎯 (touchée sur le tableau de combat par n'importe quel joueur pendant le conseil), le surplus passe aux suivantes. Sans cible en jeu, ces flèches frappent la Némésis : rien n'est perdu.
+- **Créatures / Racines** : dégâts à la créature ou à la racine choisie pour la flèche au moment de l'assignation (par défaut la créature la plus faible, la racine la plus proche d'éclore) ; le surplus passe aux suivantes. Sans cible en jeu, la flèche frappe la Némésis : rien n'est perdu.
+  - **Créatures** : menace continue. Elles restent en jeu et agissent à chaque fin de manche tant qu'elles ne sont pas abattues.
+  - **Racines** : menace à retardement. Inactives pendant leur compte à rebours, elles éclosent d'un coup en fin de manche (gros effet) puis disparaissent.
 - **Soin** : rend à l'Arbre-Cœur la moitié des points des flèches assignées.
 
 ### Une manche
@@ -110,9 +112,9 @@ src/
 ### Saisie
 La saisie se fait en deux temps, sans viser de zone sur un dessin de blason :
 1. **Scores** : un pavé de gros boutons aux couleurs des anneaux (X, 10 à 1, M). Le rappel du cordon défavorable reste affiché au-dessus. ↶ retire la dernière flèche.
-2. **Assignation** : dès la dernière flèche, chaque flèche apparaît sur une ligne avec les actions de l'esprit ; elles sont toutes assignées d'avance à l'action suggérée (ou à la spécialité). Un toucher change l'action d'une flèche, « Tout sur » les assigne toutes d'un coup. Le total de chaque action (dégâts, PV) s'affiche en direct, bonus de spécialité et Hurlement de la Meute compris.
+2. **Assignation** : dès la dernière flèche, chaque flèche apparaît sur une ligne avec les actions de l'esprit ; elles sont toutes assignées d'avance à l'action suggérée (ou à la spécialité). Un toucher change l'action d'une flèche, « Tout sur » les assigne toutes d'un coup. Une flèche sur Créatures ou Racines affiche les cibles en jeu (PV, compte à rebours) pour choisir laquelle viser ; il n'y a plus de ciblage collectif pendant le conseil. Le total de chaque action (dégâts, PV) s'affiche en direct, bonus de spécialité et Hurlement de la Meute compris.
 
-Le moteur revalide toute saisie : scores bornés, X seulement sur un 10, aucune action pour une flèche hors cible, flèche assignée à une action absente renvoyée sur la spécialité. Le brouillon de chaque volée survit aux changements d'onglet ; une volée envoyée reste corrigeable jusqu'à la résolution.
+Le moteur revalide toute saisie : scores bornés, X seulement sur un 10, aucune action pour une flèche hors cible, flèche assignée à une action absente renvoyée sur la spécialité, cible inconnue remplacée par la cible par défaut au moment de la résolution. Le brouillon de chaque volée survit aux changements d'onglet ; une volée envoyée reste corrigeable jusqu'à la résolution.
 
 ### Guidage et mise en scène
 - **Étapes de volée** : l'état de jeu porte l'étape (`council`, `shoot`, `input`) ; l'hôte la fait avancer (« Au pas de tir ! », « Flèches tirées : saisie ») et les téléphones des archers basculent d'eux-mêmes sur le tableau de combat pendant le conseil, puis sur leur cible.

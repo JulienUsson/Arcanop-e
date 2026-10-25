@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ACTION_ICONS, ACTION_LABELS, actionMultiplier, ACTIONS, availableActions, CLASSES } from '../../game/classes';
-import { actionPoints, effectAmount, volleyPool } from '../../game/engine';
+import { ACTION_ICONS, ACTION_LABELS, actionMultiplier, availableActions, CLASSES } from '../../game/classes';
+import { effectAmount, groupArrows, volleyPool, type TargetKind, type TargetOption } from '../../game/engine';
 import { arrowLabel, arrowPoints, CRIT_POINTS, isYellow, RING_COLORS } from '../../game/target';
 import type { Action, Arrow, ClassId, Submission } from '../../game/types';
 import { burstAt, flash, shake, useTween } from '../fx';
@@ -13,6 +13,7 @@ interface Props {
   arrowsPerVolley: number;
   boost?: number;
   suggested?: Action | null;
+  targets: Record<TargetKind, TargetOption[]>;
   submitted?: Submission;
   canSubmit: boolean;
   blockedReason?: string;
@@ -56,7 +57,43 @@ function ScoreChip({ arrow, small }: { arrow: Pick<Arrow, 'score' | 'x'>; small?
   );
 }
 
-export function VolleyInput({ draftKey, classId, coef, arrowsPerVolley, boost = 1, suggested, submitted, canSubmit, blockedReason, onSubmit }: Props) {
+function TargetPicker({
+  kind,
+  options,
+  selected,
+  onPick,
+}: {
+  kind: TargetKind;
+  options: TargetOption[];
+  selected: string | null;
+  onPick: (uid: string, origin: Element) => void;
+}) {
+  if (options.length === 0) {
+    return <p className="target-none">Aucune {kind === 'creatures' ? 'créature' : 'racine'} en jeu : la flèche frappera la Némésis.</p>;
+  }
+  return (
+    <div className="target-picker" role="radiogroup" aria-label="Cible">
+      <span className="target-label">🎯</span>
+      {options.map((o) => (
+        <button
+          key={o.uid}
+          role="radio"
+          aria-checked={selected === o.uid}
+          className={`target-chip${selected === o.uid ? ' selected' : ''}`}
+          onClick={(e) => onPick(o.uid, e.currentTarget)}
+        >
+          <span className="target-name">{o.name}</span>
+          <span className="target-meta">
+            {o.hp}/{o.maxHp} PV{o.countdown !== undefined ? ` · ⏳${o.countdown}` : ''}
+          </span>
+          <span className="target-hp" style={{ width: `${(o.hp / o.maxHp) * 100}%` }} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function VolleyInput({ draftKey, classId, coef, arrowsPerVolley, boost = 1, suggested, targets, submitted, canSubmit, blockedReason, onSubmit }: Props) {
   const cls = CLASSES[classId];
   const actions = availableActions(classId);
   const fallback: Action = suggested && actionMultiplier(classId, suggested) > 0 ? suggested : cls.specialty;
@@ -85,9 +122,22 @@ export function VolleyInput({ draftKey, classId, coef, arrowsPerVolley, boost = 
 
   const setArrows = (next: Arrow[]) => update({ arrows: next, editing: next.length < arrowsPerVolley });
 
+  const withAction = (arrow: Arrow, action: Action | null): Arrow => {
+    if (action === 'creatures' || action === 'roots') {
+      const options = targets[action];
+      const keep = arrow.action === action && options.some((o) => o.uid === arrow.target);
+      return { ...arrow, action, target: keep ? arrow.target : (options[0]?.uid ?? null) };
+    }
+    const { target: _drop, ...rest } = arrow;
+    return { ...rest, action };
+  };
+
+  const targetName = (action: Action, uid: string | null | undefined) =>
+    action === 'creatures' || action === 'roots' ? targets[action].find((o) => o.uid === uid)?.name : undefined;
+
   const addArrow = (key: Pick<Arrow, 'score' | 'x'>, origin?: Element) => {
     if (full) return;
-    setArrows([...arrows, { ...key, action: key.score > 0 ? fallback : null }]);
+    setArrows([...arrows, withAction({ ...key, action: null }, key.score > 0 ? fallback : null)]);
     if (key.x) {
       burstAt(origin, 'sparks', 34);
       flash('rgba(246, 211, 45, 0.4)');
@@ -103,13 +153,19 @@ export function VolleyInput({ draftKey, classId, coef, arrowsPerVolley, boost = 
 
   const assign = (index: number, action: Action, origin?: Element) => {
     if (arrows[index].score === 0 || arrows[index].action === action) return;
-    update({ ...draft, arrows: arrows.map((a, i) => (i === index ? { ...a, action } : a)) });
+    update({ ...draft, arrows: arrows.map((a, i) => (i === index ? withAction(a, action) : a)) });
     burstAt(origin, 'dust', 6);
     play('tap');
   };
 
+  const aim = (index: number, uid: string, origin?: Element) => {
+    update({ ...draft, arrows: arrows.map((a, i) => (i === index ? { ...a, target: uid } : a)) });
+    burstAt(origin, 'dust', 5);
+    play('tap');
+  };
+
   const assignAll = (action: Action) => {
-    update({ ...draft, arrows: arrows.map((a) => (a.score > 0 ? { ...a, action } : a)) });
+    update({ ...draft, arrows: arrows.map((a) => (a.score > 0 ? withAction(a, action) : a)) });
     play('tap');
   };
 
@@ -167,7 +223,7 @@ export function VolleyInput({ draftKey, classId, coef, arrowsPerVolley, boost = 
     );
   }
 
-  const usedActions = ACTIONS.filter((action) => arrows.some((a) => a.action === action));
+  const groups = groupArrows(arrows);
 
   return (
     <div className="volley-input">
@@ -225,21 +281,26 @@ export function VolleyInput({ draftKey, classId, coef, arrowsPerVolley, boost = 
                 ))}
               </div>
             )}
+            {(arrow.action === 'creatures' || arrow.action === 'roots') && (
+              <TargetPicker kind={arrow.action} options={targets[arrow.action]} selected={arrow.target ?? null} onPick={(uid, el) => aim(index, uid, el)} />
+            )}
           </li>
         ))}
       </ul>
 
-      {usedActions.length > 0 && (
+      {groups.length > 0 && (
         <ul className="assign-totals">
-          {usedActions.map((action) => {
-            const points = actionPoints(arrows, action, coef);
-            const amount = effectAmount(classId, action, points, boost);
+          {groups.map((group) => {
+            const amount = effectAmount(classId, group.action, volleyPool(group.arrows, coef), boost);
+            const name = targetName(group.action, group.target);
+            const redirected = (group.action === 'creatures' || group.action === 'roots') && targets[group.action].length === 0;
             return (
-              <li key={action} className={`action-${action}`}>
+              <li key={`${group.action}-${group.target}`} className={`action-${redirected ? 'nemesis' : group.action}`}>
                 <span>
-                  {ACTION_ICONS[action]} {ACTION_LABELS[action]}
+                  {ACTION_ICONS[group.action]} {name ?? ACTION_LABELS[group.action]}
+                  {redirected && <small> → Némésis</small>}
                 </span>
-                <strong>{action === 'heal' ? `+${amount} PV` : `${amount} dégâts`}</strong>
+                <strong>{group.action === 'heal' ? `+${amount} PV` : `${amount} dégâts`}</strong>
               </li>
             );
           })}

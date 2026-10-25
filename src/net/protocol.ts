@@ -5,8 +5,7 @@ export type GuestMessage =
   | { t: 'claim'; playerId: string }
   | { t: 'release' }
   | { t: 'submit'; playerId: string; volley: number; submission: Submission }
-  | { t: 'power'; playerId: string; targetUid?: string }
-  | { t: 'focus'; kind: 'creature' | 'root'; uid: string | null };
+  | { t: 'power'; playerId: string; targetUid?: string };
 
 export interface RosterEntry {
   playerId: string;

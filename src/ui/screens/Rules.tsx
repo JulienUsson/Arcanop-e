@@ -41,16 +41,34 @@ export function Rules({ onBack }: { onBack: () => void }) {
             {ACTION_ICONS.nemesis} {ACTION_LABELS.nemesis} : dégâts directs à la Némésis.
           </li>
           <li>
-            {ACTION_ICONS.creatures} {ACTION_LABELS.creatures} : dégâts à la créature ciblée (🎯), le surplus passe à la suivante.
+            {ACTION_ICONS.creatures} {ACTION_LABELS.creatures} : dégâts à la créature choisie pour la flèche, le surplus passe à la suivante.
           </li>
           <li>
-            {ACTION_ICONS.roots} {ACTION_LABELS.roots} : dégâts à la racine ciblée, avant qu’elle n’éclose.
+            {ACTION_ICONS.roots} {ACTION_LABELS.roots} : dégâts à la racine choisie pour la flèche, avant qu’elle n’éclose.
           </li>
           <li>
             {ACTION_ICONS.heal} {ACTION_LABELS.heal} : soigne l’Arbre-Cœur (la moitié des points des flèches assignées).
           </li>
         </ul>
-        <p className="hint">Sans créature ou racine en jeu, ces points frappent la Némésis.</p>
+        <p className="hint">
+          La cible se choisit au moment d’assigner la flèche ; par défaut, la créature la plus faible ou la racine la plus proche d’éclore.
+          Sans créature ou racine en jeu, la flèche frappe la Némésis.
+        </p>
+      </section>
+      <section className="panel">
+        <div className="panel-title">Créatures ou racines ?</div>
+        <ul>
+          <li>
+            {ACTION_ICONS.creatures} <strong>Créatures</strong> : une menace <em>continue</em>. Elles restent en jeu et agissent à chaque fin
+            de manche (blesser l’Arbre-Cœur, soigner la Némésis, vider les jauges) tant qu’on ne les abat pas. Plus tôt elles tombent,
+            moins elles coûtent. Spécialité de l’Ours.
+          </li>
+          <li>
+            {ACTION_ICONS.roots} <strong>Racines</strong> : une menace <em>à retardement</em>. Elles ne font rien pendant leur compte à
+            rebours ⏳, puis éclosent d’un coup en fin de manche (gros dégâts, gros soin pour la Némésis, invocation) et disparaissent. Il faut
+            les détruire avant la fin du compte. Spécialité du Hibou ; l’Ours peut en retarder une.
+          </li>
+        </ul>
       </section>
       <section className="panel">
         <div className="panel-title">Les esprits</div>

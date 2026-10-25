@@ -1,7 +1,7 @@
 import { useState, useSyncExternalStore } from 'react';
 import { suggestion } from '../../game/advice';
 import { CLASSES } from '../../game/classes';
-import { nextCardLabel } from '../../game/engine';
+import { nextCardLabel, targetOptions } from '../../game/engine';
 import type { HostSession } from '../../net/host';
 import { Board } from '../components/Board';
 import { ClassSheet } from '../components/ClassSheet';
@@ -32,7 +32,6 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
   useNarrationVoice(state.lastEvent);
 
   const phase = state.phase;
-  const focus = (kind: 'creature' | 'root', uid: string | null) => session.dispatch({ type: 'focus', kind, uid });
   const submittedCount = phase.kind === 'volley' ? Object.keys(phase.submissions).length : 0;
   const freePlayers = state.players.filter((p) => roster.find((r) => r.playerId === p.id)?.status === 'free');
   const selectedId =
@@ -140,7 +139,7 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
                 )}
                 {undo}
               </PhaseGuide>
-              <Board state={stage.boardState ?? state} roster={roster} onFocus={focus} />
+              <Board state={stage.boardState ?? state} roster={roster} />
               <Chronicle log={state.log} />
             </>
           )}
@@ -176,6 +175,7 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
                 coef={selectedPlayer.coef}
                 arrowsPerVolley={state.config.arrowsPerVolley}
                 boost={state.wolfBoost > 0 ? 2 : 1}
+                targets={{ creatures: targetOptions(state, 'creatures'), roots: targetOptions(state, 'roots') }}
                 suggested={suggestion(state, selectedPlayer.id)?.action}
                 submitted={phase.kind === 'volley' ? phase.submissions[selectedPlayer.id] : undefined}
                 canSubmit={phase.kind === 'volley'}

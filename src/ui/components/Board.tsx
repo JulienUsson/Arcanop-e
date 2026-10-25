@@ -14,7 +14,6 @@ interface Props {
   state: GameState;
   roster: RosterEntry[];
   you?: string | null;
-  onFocus?: (kind: 'creature' | 'root', uid: string | null) => void;
 }
 
 interface Floater {
@@ -134,7 +133,7 @@ const STATUS_LABEL: Record<RosterEntry['status'], string> = {
   host: 'hôte',
 };
 
-export function Board({ state, roster, you, onFocus }: Props) {
+export function Board({ state, roster, you }: Props) {
   const nemesis = getNemesis(state.config.nemesisId);
   const phase = state.phase;
   const revealedCard = state.revealed && state.wrathDeck[0] ? getCard(state.config.nemesisId, state.wrathDeck[0]) : null;
@@ -196,26 +195,18 @@ export function Board({ state, roster, you, onFocus }: Props) {
 
       <section className="panel">
         <div className="panel-title">
-          🐾 Créatures <small>{onFocus ? 'touchez pour cibler 🎯' : ''}</small>
+          🐾 Créatures <small>agissent à chaque fin de manche</small>
         </div>
         {creatures.length === 0 && <p className="empty">Aucune créature : les flèches « Créatures » frappent la Némésis.</p>}
         <div className="minion-grid">
           {creatures.map((c) => {
             const card = getCard(state.config.nemesisId, c.cardId);
-            const focused = state.focus.creature === c.uid && !c.dying;
             return (
-              <button
-                key={c.uid}
-                ref={c.dying ? dyingRef : undefined}
-                className={`minion creature${focused ? ' focused' : ''}${c.dying ? ' dying' : ''}`}
-                disabled={!onFocus || c.dying}
-                onClick={() => onFocus?.('creature', focused ? null : c.uid)}
-              >
-                {focused && <span className="focus-mark">🎯</span>}
+              <div key={c.uid} ref={c.dying ? dyingRef : undefined} className={`minion creature${c.dying ? ' dying' : ''}`}>
                 <div className="minion-head">{card.name}</div>
                 <HpBar hp={c.hp} max={c.maxHp} tone="creature" />
                 <small>{describeCard(card, state)}</small>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -223,29 +214,25 @@ export function Board({ state, roster, you, onFocus }: Props) {
 
       <section className="panel">
         <div className="panel-title">
-          🌿 Racines <small>{onFocus ? 'touchez pour cibler 🎯' : ''}</small>
+          🌿 Racines <small>éclosent à la fin du compte à rebours</small>
         </div>
         {roots.length === 0 && <p className="empty">Aucune racine : les flèches « Racines » frappent la Némésis.</p>}
         <div className="minion-grid">
           {roots.map((r) => {
             const card = getCard(state.config.nemesisId, r.cardId);
-            const focused = state.focus.root === r.uid && !r.dying;
             return (
-              <button
+              <div
                 key={r.uid}
                 ref={r.dying ? dyingRef : undefined}
-                className={`minion root${focused ? ' focused' : ''}${r.countdown <= 1 && !r.dying ? ' urgent' : ''}${r.dying ? ' dying' : ''}`}
-                disabled={!onFocus || r.dying}
-                onClick={() => onFocus?.('root', focused ? null : r.uid)}
+                className={`minion root${r.countdown <= 1 && !r.dying ? ' urgent' : ''}${r.dying ? ' dying' : ''}`}
               >
-                {focused && <span className="focus-mark">🎯</span>}
                 <span className="countdown" title="Manches avant éclosion">
                   ⏳{r.countdown}
                 </span>
                 <div className="minion-head">{card.name}</div>
                 <HpBar hp={r.hp} max={r.maxHp} tone="root" />
                 <small>{describeCard(card, state)}</small>
-              </button>
+              </div>
             );
           })}
         </div>
