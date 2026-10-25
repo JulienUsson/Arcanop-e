@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ACTION_ICONS, ACTION_LABELS, actionMultiplier, availableActions, CLASSES } from '../../game/classes';
 import { effectAmount, groupArrows, volleyPool, type TargetKind, type TargetOption } from '../../game/engine';
 import { arrowLabel, arrowPoints, CRIT_POINTS, isYellow, RING_COLORS } from '../../game/target';
-import type { Action, Arrow, ClassId, Submission } from '../../game/types';
+import type { Action, Arrow, ClassId, Shot, Submission } from '../../game/types';
 import { burstAt, flash, shake, useTween } from '../fx';
 import { play } from '../sfx';
 
@@ -18,6 +18,7 @@ interface Props {
   weakened?: boolean;
   targets: Record<TargetKind | 'heal', TargetOption[]>;
   submitted?: Submission;
+  shots?: Shot[];
   canSubmit: boolean;
   blockedReason?: string;
   onSubmit: (submission: Submission) => void;
@@ -109,6 +110,7 @@ export function VolleyInput({
   weakened = false,
   targets,
   submitted,
+  shots,
   canSubmit,
   blockedReason,
   onSubmit,
@@ -117,7 +119,25 @@ export function VolleyInput({
   const actions = availableActions(classId);
   const fallback: Action = suggested && actionMultiplier(classId, suggested) > 0 ? suggested : cls.specialty;
 
-  const initial = (): Draft => drafts.get(draftKey) ?? (submitted ? { arrows: submitted.arrows, editing: false } : { arrows: [], editing: true });
+  const withAction = (arrow: Arrow, action: Action | null): Arrow => {
+    if (action === 'creatures' || action === 'roots') {
+      const options = targets[action];
+      const keep = arrow.action === action && options.some((o) => o.uid === arrow.target);
+      return { ...arrow, action, target: keep ? arrow.target : (options[0]?.uid ?? null) };
+    }
+    if (action === 'heal') {
+      const keep = arrow.action === 'heal' && targets.heal.some((o) => o.uid === arrow.target);
+      const preferred = suggested === 'heal' && targets.heal.some((o) => o.uid === suggestedTarget) ? suggestedTarget : null;
+      return { ...arrow, action, target: keep ? arrow.target : preferred };
+    }
+    const { target: _drop, ...rest } = arrow;
+    return { ...rest, action };
+  };
+
+  const preset = (): Draft | null =>
+    shots ? { arrows: shots.map((shot) => withAction({ ...shot, action: null }, shot.score > 0 ? fallback : null)), editing: false } : null;
+  const initial = (): Draft =>
+    drafts.get(draftKey) ?? (submitted ? { arrows: submitted.arrows, editing: false } : (preset() ?? { arrows: [], editing: true }));
   const [draft, setDraft] = useState<Draft>(initial);
   const [sentKey, setSentKey] = useState(0);
 
@@ -140,21 +160,6 @@ export function VolleyInput({
   const same = !!submitted && JSON.stringify(submitted.arrows) === JSON.stringify(arrows);
 
   const setArrows = (next: Arrow[]) => update({ arrows: next, editing: next.length < arrowsPerVolley });
-
-  const withAction = (arrow: Arrow, action: Action | null): Arrow => {
-    if (action === 'creatures' || action === 'roots') {
-      const options = targets[action];
-      const keep = arrow.action === action && options.some((o) => o.uid === arrow.target);
-      return { ...arrow, action, target: keep ? arrow.target : (options[0]?.uid ?? null) };
-    }
-    if (action === 'heal') {
-      const keep = arrow.action === 'heal' && targets.heal.some((o) => o.uid === arrow.target);
-      const preferred = suggested === 'heal' && targets.heal.some((o) => o.uid === suggestedTarget) ? suggestedTarget : null;
-      return { ...arrow, action, target: keep ? arrow.target : preferred };
-    }
-    const { target: _drop, ...rest } = arrow;
-    return { ...rest, action };
-  };
 
   const targetName = (action: Action, uid: string | null | undefined) =>
     action === 'creatures' || action === 'roots' || action === 'heal' ? targets[action].find((o) => o.uid === (uid ?? (action === 'heal' ? 'tree' : uid)))?.name : undefined;
@@ -200,7 +205,7 @@ export function VolleyInput({
     play('send');
   };
 
-  if (!full || draft.editing) {
+  if (!shots && (!full || draft.editing)) {
     return (
       <div className="volley-input">
         <div className="score-slots">
@@ -261,9 +266,13 @@ export function VolleyInput({
   return (
     <div className="volley-input">
       <div className="assign-head">
-        <button className="ghost small" onClick={() => update({ ...draft, editing: true })}>
-          ✎ Scores
-        </button>
+        {shots ? (
+          <span className="bot-shots">🤖 Flèches tirées par le compagnon</span>
+        ) : (
+          <button className="ghost small" onClick={() => update({ ...draft, editing: true })}>
+            ✎ Scores
+          </button>
+        )}
         <span className="pool">
           <span className="pool-value" key={pool}>
             {shownPool}

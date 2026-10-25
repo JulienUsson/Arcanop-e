@@ -11,11 +11,9 @@ const STEP_MS = 420;
 
 const CONTINUE_LABEL: Record<GameEvent['kind'], string> = {
   intro: 'Que la chasse commence !',
-  volley: 'Au conseil !',
   nemesis: 'Continuer',
   fury: 'Tenir bon !',
   resolve: 'Continuer',
-  round: 'Nouvelle manche',
   power: 'Continuer',
   victory: 'Voir le bilan',
   defeat: 'Voir le bilan',
@@ -23,10 +21,8 @@ const CONTINUE_LABEL: Record<GameEvent['kind'], string> = {
 
 const OPENING_SOUND: Partial<Record<GameEvent['kind'], Sound>> = {
   intro: 'nemesis',
-  volley: 'card',
   nemesis: 'nemesis',
   fury: 'defeat',
-  round: 'card',
   power: 'power',
   victory: 'victory',
   defeat: 'defeat',
@@ -41,7 +37,6 @@ function resultSound(result: VolleyResult): Sound {
 
 function steps(event: GameEvent): number {
   if (event.results?.length) return event.results.length;
-  if (event.kind === 'round') return event.lines.length;
   return 0;
 }
 
@@ -65,7 +60,6 @@ const OPENING_FX: Partial<Record<GameEvent['kind'], () => void>> = {
     flash('rgba(155, 63, 191, 0.55)');
     setTimeout(() => burst('petals', innerWidth / 2, innerHeight * 0.32, 18), 300);
   },
-  volley: () => setTimeout(() => burst('sparks', innerWidth / 2, innerHeight * 0.35, 26), 650),
   fury: () => {
     flash('rgba(200, 30, 40, 0.6)');
     shake('hard');
@@ -77,7 +71,6 @@ const OPENING_FX: Partial<Record<GameEvent['kind'], () => void>> = {
     shake('soft');
     setTimeout(() => burst('shards', innerWidth / 2, innerHeight * 0.4, 28), 650);
   },
-  round: () => burst('embers', innerWidth / 2, innerHeight * 0.3, 20),
   victory: () => {
     flash('rgba(246, 211, 45, 0.55)');
     [0, 500, 1100, 1800].forEach((t, i) =>
@@ -173,21 +166,6 @@ function StageContent({ event, state, revealed }: { event: GameEvent; state: Gam
           </p>
         </>
       );
-    case 'volley':
-      return (
-        <>
-          <FlipCard back="🃏" className="volley-card">
-            <div className="card-icon">🏹</div>
-            <div className="card-name">{event.title}</div>
-          </FlipCard>
-          <p className="stage-story">{event.narration}</p>
-          <ol className="stage-steps">
-            <li>🗣️ Conseil</li>
-            <li>🏹 Tir</li>
-            <li>🎯 Saisie</li>
-          </ol>
-        </>
-      );
     case 'nemesis':
       return <NemesisCard event={event} state={state} />;
     case 'fury': {
@@ -200,7 +178,7 @@ function StageContent({ event, state, revealed }: { event: GameEvent; state: Gam
           <p className="stage-story">{event.narration}</p>
           <ul className="stage-lines">
             {event.lines
-              .filter((l) => l.includes('Déchaînement') || l.includes('à terre'))
+              .filter((l) => !l.includes('Furie finale'))
               .map((line, i) => (
                 <li key={i} className="pop delayed">
                   {line}
@@ -228,21 +206,6 @@ function StageContent({ event, state, revealed }: { event: GameEvent; state: Gam
         </>
       );
     }
-    case 'round':
-      return (
-        <>
-          <div className="stage-portrait moon">🌒</div>
-          <h1 className="stage-title">{event.title}</h1>
-          <p className="stage-story">{event.narration}</p>
-          <ul className="stage-lines">
-            {event.lines.slice(0, revealed).map((line, i) => (
-              <li key={i} className="pop">
-                {line}
-              </li>
-            ))}
-          </ul>
-        </>
-      );
     case 'resolve':
       return (
         <>
@@ -308,7 +271,9 @@ function NemesisCard({ event, state }: { event: GameEvent; state: GameState }) {
   const type = CARD_TYPES[card.type];
   return (
     <>
-      <p className="stage-sub">{nemesis.name} joue une carte de colère</p>
+      <p className="stage-sub">
+        {nemesis.name} joue une carte de colère{event.title.match(/ \(\d\/\d\)$/)?.[0] ?? ''}
+      </p>
       <FlipCard back={nemesis.portrait} className={`wrath-card type-${card.type} tier-${card.tier}`}>
         <div className="card-ribbon">
           {type.icon} {type.label}
@@ -318,7 +283,7 @@ function NemesisCard({ event, state }: { event: GameEvent; state: GameState }) {
         <div className="card-effect">{describeCard(card, state)}</div>
         {card.type !== 'attack' && (
           <div className="card-stats">
-            {card.type === 'root' && <span>⏳ {card.countdown} manches</span>}
+            {card.type === 'root' && <span>⏳ {card.countdown} tours</span>}
           </div>
         )}
       </FlipCard>

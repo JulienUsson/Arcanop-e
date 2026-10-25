@@ -4,7 +4,8 @@ import { Modal } from './Modal';
 import { NemesisSheet } from './NemesisSheet';
 import { TreeSheet } from './TreeSheet';
 import { CLASSES } from '../../game/classes';
-import { describeCard, gaugeMax } from '../../game/engine';
+import { GAUGE_MAX } from '../../game/difficulty';
+import { describeCard, nemesisActions } from '../../game/engine';
 import { getCard, getNemesis } from '../../game/nemesis';
 import type { GameState } from '../../game/types';
 import type { RosterEntry } from '../../net/protocol';
@@ -61,7 +62,7 @@ export function HpBar({ hp, max, tone }: { hp: number; max: number; tone: 'nemes
   );
 }
 
-export function Gauge({ value, max }: { value: number; max: number }) {
+export function Gauge({ value }: { value: number }) {
   const previous = useRef(value);
   const [popped, setPopped] = useState<number | null>(null);
   useEffect(() => {
@@ -69,8 +70,8 @@ export function Gauge({ value, max }: { value: number; max: number }) {
     previous.current = value;
   }, [value]);
   return (
-    <span className={`gauge${value >= max ? ' full' : ''}`} aria-label={`Jauge ${value}/${max}`}>
-      {Array.from({ length: max }, (_, i) => (
+    <span className={`gauge${value >= GAUGE_MAX ? ' full' : ''}`} aria-label={`Jauge ${value}/${GAUGE_MAX}`}>
+      {Array.from({ length: GAUGE_MAX }, (_, i) => (
         <span key={`${i}-${popped === i ? value : 0}`} className={`pip${i < value ? ' on' : ''}${popped === i ? ' pop' : ''}`} />
       ))}
     </span>
@@ -141,11 +142,12 @@ export function Board({ state, roster, you }: Props) {
   const creatures = useGhosts(state.creatures);
   const roots = useGhosts(state.roots);
   const treeLow = state.tree.hp <= state.tree.maxHp * 0.3;
+  const riposteCards = nemesisActions(state.config);
 
   return (
     <div className="board">
       {treeLow && <div className="danger-vignette" aria-hidden />}
-      <section className={`arena${treeLow ? ' tree-low' : ''}${state.wrathDeck.length === 0 && state.round > 0 ? ' fury' : ''}`}>
+      <section className={`arena${treeLow ? ' tree-low' : ''}${state.wrathDeck.length === 0 && state.phase.kind !== 'lobby' ? ' fury' : ''}`}>
         <div className="combatant tree-side">
           <Portrait kind="tree" hp={state.tree.hp} max={state.tree.maxHp} onClick={() => setTreeSheet(true)}>
             🌳
@@ -169,17 +171,10 @@ export function Board({ state, roster, you }: Props) {
 
       <section className="panel turn-panel">
         <div className="turn-info">
-          <strong>Manche {state.round || '—'}</strong>
-          <span className="turn-cards" aria-label="Ordre des tours">
-            {state.turnDiscard.map((c, i) => (
-              <span key={`d${i}`} className={`turn-card played ${c}`}>
-                {c === 'volley' ? '🏹' : '💀'}
-              </span>
-            ))}
-            {state.turnDeck.map((_, i) => (
-              <span key={`r${i}`} className="turn-card hidden" />
-            ))}
-          </span>
+          <strong>Volée {state.volleyCount || '—'}</strong>
+          <small className="turn-next">
+            {phase.kind === 'nemesis' ? '💀 Riposte en cours' : `puis 💀 riposte : ${riposteCards} carte${riposteCards > 1 ? 's' : ''}`}
+          </small>
         </div>
         {state.wrathDeck.length > 0 ? (
           <div className="wrath-info" title="Cartes de colère restantes">
@@ -202,7 +197,7 @@ export function Board({ state, roster, you }: Props) {
 
       <section className="panel">
         <div className="panel-title">
-          🐾 Créatures <small>agissent à chaque fin de manche</small>
+          🐾 Créatures <small>agissent à chaque tour de la Némésis</small>
         </div>
         {creatures.length === 0 && <p className="empty">Aucune créature : les flèches « Créatures » frappent la Némésis.</p>}
         <div className="minion-grid">
@@ -221,7 +216,7 @@ export function Board({ state, roster, you }: Props) {
 
       <section className="panel">
         <div className="panel-title">
-          🌿 Racines <small>éclosent à la fin du compte à rebours</small>
+          🌿 Racines <small>⏳ tours de la Némésis avant éclosion</small>
         </div>
         {roots.length === 0 && <p className="empty">Aucune racine : les flèches « Racines » frappent la Némésis.</p>}
         <div className="minion-grid">
@@ -231,9 +226,9 @@ export function Board({ state, roster, you }: Props) {
               <div
                 key={r.uid}
                 ref={r.dying ? dyingRef : undefined}
-                className={`minion root${r.countdown <= 1 && !r.dying ? ' urgent' : ''}${r.dying ? ' dying' : ''}`}
+                className={`minion root${r.countdown <= riposteCards && !r.dying ? ' urgent' : ''}${r.dying ? ' dying' : ''}`}
               >
-                <span className="countdown" title="Manches avant éclosion">
+                <span className="countdown" title="Tours de la Némésis avant éclosion">
                   ⏳{r.countdown}
                 </span>
                 <div className="minion-head">{card.name}</div>
@@ -259,12 +254,13 @@ export function Board({ state, roster, you }: Props) {
                       {p.hp <= 0 ? '💤' : CLASSES[p.classId].emoji}
                     </span>
                     {p.name}
+                    {p.bot && <span className="status bot">🤖 compagnon</span>}
                     {p.hp <= 0 && <span className="status down">à terre ×½</span>}
                     {entry && entry.status !== 'free' && <span className={`status ${entry.status}`}>{STATUS_LABEL[entry.status]}</span>}
                   </span>
                   <span className="right">
                     {phase.kind === 'volley' && <span className={`submitted${submitted ? ' yes' : ''}`}>{submitted ? '✓' : '…'}</span>}
-                    <Gauge value={p.gauge} max={gaugeMax(state.config)} />
+                    <Gauge value={p.gauge} />
                   </span>
                 </div>
                 <HpBar hp={p.hp} max={p.maxHp} tone="archer" />

@@ -112,9 +112,9 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
                     Commencer la partie
                   </button>
                 )}
-                {phase.kind === 'turn' && (
+                {phase.kind === 'nemesis' && (
                   <button className="primary big glow" onClick={() => session.dispatch({ type: 'draw' })}>
-                    🃏 {nextCardLabel(state)}
+                    💀 {nextCardLabel(state)}
                   </button>
                 )}
                 {phase.kind === 'volley' && phase.step === 'council' && (
@@ -148,6 +148,7 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
                   return (
                     <button key={p.id} className={`chip${p.id === selectedId ? ' selected' : ''}`} onClick={() => setSelected(p.id)}>
                       {CLASSES[p.classId].emoji} {p.name}
+                      {p.bot && ' 🤖'}
                       {entry?.status === 'online' && ' 📱'}
                       {done && ' ✓'}
                     </button>
@@ -164,26 +165,31 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
                   📜 Fiche {CLASSES[selectedPlayer.classId].name}
                 </button>
               </div>
-              <VolleyInput
-                draftKey={`host:${phase.kind === 'volley' ? phase.volley : 'next'}:${selectedPlayer.id}`}
-                classId={selectedPlayer.classId}
-                coef={selectedPlayer.coef}
-                favorableCordon={ARCHER_LEVELS[selectedPlayer.level].favorableCordon}
-                arrowsPerVolley={state.config.arrowsPerVolley}
-                boost={state.wolfBoost > 0 ? 2 : 1}
-                targets={{ creatures: targetOptions(state, 'creatures'), roots: targetOptions(state, 'roots'), heal: healOptions(state) }}
-                suggestedTarget={suggestion(state, selectedPlayer.id)?.target}
-                weakened={selectedPlayer.hp <= 0}
-                suggested={suggestion(state, selectedPlayer.id)?.action}
-                submitted={phase.kind === 'volley' ? phase.submissions[selectedPlayer.id] : undefined}
-                canSubmit={phase.kind === 'volley'}
-                blockedReason="La saisie s’ouvre quand une carte Volée est tirée."
-                onSubmit={(submission) => {
-                  session.dispatch({ type: 'submit', playerId: selectedPlayer.id, submission });
-                  const next = freePlayers.find((p) => p.id !== selectedPlayer.id && phase.kind === 'volley' && !phase.submissions[p.id]);
-                  if (next) setTimeout(() => setSelected(next.id), 600);
-                }}
-              />
+              {selectedPlayer.bot && phase.kind !== 'volley' ? (
+                <p className="hint center bot-wait">🤖 {selectedPlayer.name} tirera ses flèches au début de la prochaine volée.</p>
+              ) : (
+                <VolleyInput
+                  draftKey={`host:${phase.kind === 'volley' ? phase.volley : 'next'}:${selectedPlayer.id}`}
+                  classId={selectedPlayer.classId}
+                  coef={selectedPlayer.coef}
+                  favorableCordon={ARCHER_LEVELS[selectedPlayer.level].favorableCordon}
+                  arrowsPerVolley={state.config.arrowsPerVolley}
+                  boost={state.wolfBoost > 0 ? 2 : 1}
+                  targets={{ creatures: targetOptions(state, 'creatures'), roots: targetOptions(state, 'roots'), heal: healOptions(state) }}
+                  suggestedTarget={suggestion(state, selectedPlayer.id)?.target}
+                  weakened={selectedPlayer.hp <= 0}
+                  suggested={suggestion(state, selectedPlayer.id)?.action}
+                  submitted={phase.kind === 'volley' ? phase.submissions[selectedPlayer.id] : undefined}
+                  shots={phase.kind === 'volley' ? phase.bots[selectedPlayer.id] : undefined}
+                  canSubmit={phase.kind === 'volley'}
+                  blockedReason="La saisie s’ouvre au début de la prochaine volée, après la riposte de la Némésis."
+                  onSubmit={(submission) => {
+                    session.dispatch({ type: 'submit', playerId: selectedPlayer.id, submission });
+                    const next = freePlayers.find((p) => p.id !== selectedPlayer.id && phase.kind === 'volley' && !phase.submissions[p.id]);
+                    if (next) setTimeout(() => setSelected(next.id), 600);
+                  }}
+                />
+              )}
               <PowerPanel
                 state={state}
                 playerId={selectedPlayer.id}
@@ -226,7 +232,7 @@ function ArchersTab({ session, onQuit }: { session: HostSession; onQuit: () => v
                 <span className="right">
                   {entry?.status === 'online' && <span className="status online">📱 connecté</span>}
                   {entry?.status === 'offline' && <span className="status offline">📵 déconnecté</span>}
-                  {entry?.status === 'free' && <span className="status free">saisie sur l’hôte</span>}
+                  {entry?.status === 'free' && <span className="status free">{p.bot ? '🤖 compagnon, réparti sur l’hôte' : 'saisie sur l’hôte'}</span>}
                   {entry && entry.status !== 'free' && (
                     <button
                       className="ghost small"

@@ -21,12 +21,12 @@ Le workflow `.github/workflows/deploy.yml` publie le build sur GitHub Pages à c
 ## Déroulé d'une séance
 
 1. **Avant d'aller au pas de tir**, chaque archer ouvre l'application et l'installe (« Ajouter à l'écran d'accueil »). Elle fonctionne ensuite entièrement hors ligne.
-2. **L'hôte** choisit « Créer une partie » : archers, classes, niveau de chaque archer, Némésis, difficulté, flèches par volée.
+2. **L'hôte** choisit « Créer une partie » : archers, classes, niveau de chaque archer, Némésis, difficulté, volées de 3 ou 6 flèches. À moins de quatre archers, des compagnons complètent l'équipe.
 3. **Connexion des téléphones** (onglet *Archers*) : l'hôte crée une invitation (QR code), l'archer la scanne depuis « Rejoindre », affiche sa réponse, que l'hôte scanne à son tour. L'archer choisit ensuite son Gardien et découvre sa fiche de classe. Un code texte copiable remplace le QR si une caméra manque.
-4. **Partie** : un guide de phase indique à chacun ce qu'il faut faire (🃏 Carte → 🏹 Conseil & tir → 🎯 Saisie → ⚔️ Résolution). L'hôte tire les cartes d'ordre de tour et fait avancer les étapes ; chaque carte, chaque résolution et chaque pouvoir s'affiche en plein écran sur tous les téléphones.
+4. **Partie** : un guide de phase indique à chacun ce qu'il faut faire (🏹 Conseil & tir → 🎯 Saisie → ⚔️ Résolution → 💀 Riposte). L'hôte fait avancer les étapes et révèle les cartes de la Némésis ; chaque carte, chaque résolution et chaque pouvoir s'affiche en plein écran sur tous les téléphones.
 5. **Fin de partie** : résumé, distinctions et statistiques par archer.
 
-Les archers sans téléphone sont saisis par l'hôte (onglet *Saisie*). L'hôte peut aussi corriger la saisie d'un archer connecté et annuler la dernière action.
+Les archers sans téléphone et les compagnons sont saisis par l'hôte (onglet *Saisie*). L'hôte peut aussi corriger la saisie d'un archer connecté et annuler la dernière action.
 
 ## Règles
 
@@ -45,22 +45,22 @@ Chaque archer tire ses flèches (3 par défaut) sur un blason classique, puis sa
 - **Répartition des flèches** : chaque flèche est assignée à une action de l'esprit. Par exemple, sur une volée 6, 8, 9, le Loup peut envoyer le 9 sur la Némésis et le 8 et le 6 sur les racines.
 - **Puissance** : pour chaque action, somme des flèches assignées × multiplicateur de niveau. Les flèches assignées à la **spécialité** comptent ×1,5. Chaque esprit a une action absente.
 - **Arrondis** : tous les multiplicateurs (niveau, spécialité, soin, archer à terre, Meute) sont arrondis à l'entier inférieur.
-- **Jauge** : un 10 ajoute un point de jauge, un X en ajoute deux ; au niveau Facile, un 9 en ajoute aussi un. La jauge a autant de cases que de flèches par volée (3 en 3 flèches, 6 en 6 flèches) ; pleine, le pouvoir de l'esprit est activable. Le 9 est réservé aux débutants pour que les pouvoirs restent rares chez les archers confirmés : à 8 de moyenne, un archer Normal charge son pouvoir toutes les trois volées environ.
+- **Jauge** : un 10 ajoute un point de jauge, un X en ajoute deux ; au niveau Facile, un 9 en ajoute aussi un. À 3 points, le pouvoir de l'esprit est activable. Le 9 est réservé aux débutants pour que les pouvoirs restent rares chez les archers confirmés : à 8 de moyenne, un archer Normal charge son pouvoir toutes les trois volées environ.
 
 ### Les esprits
 
 | Classe | Spécialité ×1,5 | Actions ×1 | Absente | Pouvoir |
 |---|---|---|---|---|
 | 🐺 Loup | Némésis | Créatures, Racines | Soin | Dégâts de toute l'équipe doublés à la prochaine volée |
-| 🐻 Ours | Créatures | Némésis, Soin | Racines | Retarde une racine d'une manche |
+| 🐻 Ours | Créatures | Némésis, Soin | Racines | Retarde une racine d'un tour de la Némésis |
 | 🦉 Hibou | Racines | Némésis, Créatures | Soin | Révèle la prochaine carte de la Corruption |
 | 🦌 Cerf | Soin | Némésis, Racines | Créatures | Soigne l'Arbre-Cœur de 15 PV |
 
 ### Les actions
 - **Némésis** : dégâts directs.
 - **Créatures / Racines** : dégâts à la créature ou à la racine choisie pour la flèche au moment de l'assignation (par défaut la créature la plus faible, la racine la plus proche d'éclore) ; le surplus passe aux suivantes. Sans cible en jeu, la flèche frappe la Némésis : rien n'est perdu.
-  - **Créatures** : menace continue. Elles restent en jeu et agissent à chaque fin de manche tant qu'elles ne sont pas abattues.
-  - **Racines** : menace à retardement. Inactives pendant leur compte à rebours, elles éclosent d'un coup en fin de manche (gros effet) puis disparaissent.
+  - **Créatures** : menace continue. Elles restent en jeu et agissent à chaque tour de la Némésis tant qu'elles ne sont pas abattues.
+  - **Racines** : menace à retardement. Inactives pendant leur compte à rebours, elles éclosent d'un coup quand il atteint zéro (gros effet) puis disparaissent.
 - **Soin** : rend la moitié des points des flèches assignées, à l'Arbre-Cœur (par défaut) ou à un Gardien choisi.
 
 ### Les Gardiens
@@ -70,41 +70,41 @@ Chaque archer tire ses flèches (3 par défaut) sur un blason classique, puis sa
 - Une flèche de Soin assignée à un Gardien le soigne ; à terre, il se relève avec toute sa force. Le Bramement de la Sève soigne aussi 5 PV à chaque Gardien.
 - Un Gardien à terre ne fait pas perdre la partie.
 
-### Une manche
-1. Le paquet d'ordre de tour est mélangé (Normal : 3 Volée, 2 Némésis).
-2. Volée : conseil et tir réel (une seule étape), saisie, résolution.
-3. Némésis : une carte du paquet de colère — **Attaque** (effet immédiat), **Créature** (reste en jeu et agit à chaque fin de manche), **Racine** (compte à rebours, éclot en fin de manche si elle n'est pas détruite).
-4. Une fois le paquet d'ordre épuisé, l'hôte termine la manche : les créatures agissent, les racines décomptent.
+### Volée et riposte
+La partie alterne simplement : les archers tirent, la Némésis riposte. Il n'y a plus de paquet d'ordre de tour ni de carte Volée à tirer.
+1. **Volée** : conseil et tir réel (une seule étape), saisie, résolution.
+2. **Riposte** : l'hôte révèle une carte du paquet de colère — **Attaque** (effet immédiat), **Créature** (reste en jeu), **Racine** (compte à rebours). Puis chaque créature agit et le compte à rebours de chaque racine diminue ; une racine à zéro éclot. Carte et réactions forment un **tour de la Némésis**.
+3. Une créature ou une racine qui vient d'arriver n'agit qu'au tour suivant : l'équipe a toujours une volée pour réagir.
+
+**Volées de 3 ou 6 flèches** : une volée de 6 flèches vaut deux volées de 3, la riposte compte donc deux tours de la Némésis (deux cartes, les créatures agissent deux fois). Les PV des adversaires ne dépendent pas du format.
+
+**Compagnons** : la partie est équilibrée pour quatre Gardiens. À moins de quatre archers, des compagnons 🤖 complètent l'équipe, en prenant par défaut les esprits encore libres (modifiables à la mise en place). Au début de chaque volée, l'appli tire leurs flèches (8 de moyenne, un 10 sur trois est un X) ; l'hôte les répartit entre leurs actions comme pour un archer, en choisissant les cibles. Ils ont des PV, une jauge et un pouvoir comme les autres. Un téléphone ne peut pas prendre le contrôle d'un compagnon.
 
 Victoire quand la Némésis tombe à 0 PV. Défaite quand l'Arbre-Cœur tombe à 0 PV.
 
 ### Furie finale
-Quand la Némésis doit jouer alors que son paquet de colère est vide, elle entre en **Furie finale** : chaque carte Némésis devient un Déchaînement qui inflige 10 dégâts à l'Arbre-Cœur et 3 à chaque Gardien, puis +6 et +1 à chaque Déchaînement suivant, avant les multiplicateurs de difficulté et de mise à l'échelle. Les créatures et racines en jeu continuent d'agir. La partie n'est plus perdue d'office à l'épuisement du paquet : l'équipe garde une dernière chance d'abattre la Némésis, mais la Furie s'emballe vite et finit par abattre l'Arbre-Cœur. Le paquet reste donc un chronomètre, avec une fin dramatique plutôt qu'un couperet. Le tableau de combat annonce « Furie imminente » quand le paquet est vide, la fiche de la Némésis affiche le prochain Déchaînement et le conseil le signale en priorité.
+Quand la Némésis doit jouer alors que son paquet de colère est vide, elle entre en **Furie finale** : chaque tour de la Némésis commence par un Déchaînement au lieu d'une carte qui inflige 10 dégâts à l'Arbre-Cœur et 3 à chaque Gardien, puis +6 et +1 à chaque Déchaînement suivant, avant les multiplicateurs de difficulté et de mise à l'échelle. Les créatures et racines en jeu continuent d'agir. La partie n'est plus perdue d'office à l'épuisement du paquet : l'équipe garde une dernière chance d'abattre la Némésis, mais la Furie s'emballe vite et finit par abattre l'Arbre-Cœur. Le paquet reste donc un chronomètre, avec une fin dramatique plutôt qu'un couperet. Le tableau de combat annonce « Furie imminente » quand le paquet est vide, la fiche de la Némésis affiche le prochain Déchaînement et le conseil le signale en priorité.
 
 ### Difficultés
 
 | | Facile | Normal | Difficile |
 |---|---|---|---|
-| Ordre de tour par manche | 3 Volée, 2 Némésis | 3 Volée, 2 Némésis | 2 Volée, 2 Némésis |
-| PV Némésis par flèche de volée | 115 | 160 | 130 |
+| PV Némésis (quatre Gardiens) | 1300 | 1600 | 1780 |
 | PV Arbre-Cœur | 60 | 45 | 40 |
-| Cartes de colère (niveaux 1/2/3) | 4/4/2 | 3/4/3 | 4/5/5 |
-| Multiplicateur des dégâts à l'Arbre | ×1,4 | ×2,4 | ×2,2 |
+| Cartes de colère (niveaux 1/2/3) | 5/5/4 | 4/5/5 | 4/5/5 |
+| Multiplicateur des dégâts à l'Arbre | ×1,2 | ×2,4 | ×2,2 |
 | PV de chaque Gardien | 20 | 15 | 12 |
 | Multiplicateur des dégâts aux Gardiens | ×0,75 | ×1 | ×1,25 |
 
 ### Mise à l'échelle
-La partie s'adapte au nombre d'archers et de flèches par volée, pour qu'une équipe à 8 de moyenne ait les mêmes chances quelle que soit sa taille.
-- **Némésis** : PV proportionnels au nombre de flèches tirées par volée (archers × flèches), corrigés selon la taille de l'équipe :
+Tout est réglé pour quatre Gardiens en volées de 3 flèches ; les compagnons ramènent toute équipe plus petite à quatre.
+- **Volées de 6 flèches** : PV de la Némésis ×0,9. Ses deux cartes tombent d'affilée, sans volée entre les deux pour soigner, ce qui rend le format un peu plus dur à PV égaux.
+- **Plus de quatre archers** : les PV de la Némésis, des créatures et des racines, et les soins de la Corruption, suivent `archers / 4` ; les PV de l'Arbre-Cœur, ses dégâts et le Bramement de la Sève suivent `0,5 + 0,5 × archers / 4` (au plus ×1,5). Les PV de la Némésis reçoivent en plus une correction mesurée par simulation, car une grande équipe profite d'un Hurlement de la Meute qui double les dégâts de tout le monde et de plus de pouvoirs par volée :
 
-  | Archers | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
-  |---|---|---|---|---|---|---|---|---|
-  | Correction | ×0,5 | ×0,72 | ×0,87 | ×1 | ×1,06 | ×1,14 | ×1,21 | ×1,29 |
-
-  Une petite équipe ne couvre pas tous les rôles (un Loup seul ne soigne pas) et doit disperser ses flèches sur autant de créatures et de racines qu'une grande. Une grande équipe profite d'un Hurlement de la Meute qui double les dégâts de tout le monde et de plus de pouvoirs par volée.
-- **Créatures, racines, soins de la Corruption** : facteur `flèches / 12` (minimum 0,4).
-- **Arbre-Cœur** : ses PV, les dégâts qu'il subit et le soin du Bramement de la Sève suivent `0,5 + 0,5 × facteur`, borné entre 0,6 et 1,5. Une petite équipe, qui soigne moins, n'est pas écrasée, et un gros coup pèse autant sur l'Arbre quelle que soit la taille de la partie.
-- **Jauge** : autant de cases que de flèches par volée, pour que les pouvoirs reviennent au même rythme en 3 ou en 6 flèches.
+  | Archers | 5 | 6 | 7 | 8 |
+  |---|---|---|---|---|
+  | 3 flèches | ×1,08 | ×1,14 | ×1,28 | ×1,37 |
+  | 6 flèches | ×1,2 | ×1,32 | ×1,45 | ×1,65 |
 
 Le niveau de l'archer sert de handicap : un débutant en Facile (cordon favorable, ×1,2) pèse autant qu'un tireur confirmé en Difficile (×0,8), l'équipe reste mixte.
 
@@ -113,13 +113,13 @@ Le niveau de l'archer sert de handicap : un débutant en Facile (cordon favorabl
 
 | Moyenne | Facile | Normal | Difficile |
 |---|---|---|---|
-| 6,5 | ~95 % | ~0 % | ~0 % |
-| 8 | ~100 % | ~60 % | ~35 % |
-| 9 | ~100 % | ~90 % | ~85 % |
+| 6,5 | ~75 % | ~0 % | ~0 % |
+| 8 | ~100 % | ~60 % | ~25 % |
+| 9 | ~100 % | ~90 % | ~90 % |
 
-À 8 de moyenne, la simulation fait aussi varier la taille de l'équipe (de 1 à 8 archers, chaque classe représentée avant d'en doubler une, moyenne sur toutes les compositions) en 3 et 6 flèches : Normal reste entre 55 et 65 % de victoires, Difficile entre 25 et 45 % (plus dur en solo, ~60 % à 8 archers en 6 flèches), Facile toujours gagné.
+À 8 de moyenne, la simulation fait aussi varier la taille de l'équipe (de 1 à 8 archers complétés par des compagnons, chaque classe représentée avant d'en doubler une, moyenne sur toutes les compositions) en 3 et 6 flèches : Normal reste entre 55 et 70 % de victoires, Difficile entre 20 et 40 % (~10 % à huit archers en 3 flèches), Facile toujours gagné.
 
-Les parties durent 12 à 16 volées. En Normal à 8 de moyenne, la moitié des parties se jouent pendant la Furie finale : le paquet de colère, plus court, sert de chronomètre. Une équipe plus faible joue en Facile, ou ses archers prennent le niveau Facile (×1,2, cordon favorable, jauge dès le 9). La simulation compte aussi les archers mis à terre : rarement en Normal, 1 à 2 par partie en Difficile. Les archers virtuels jouent de façon optimale ; une vraie équipe fait moins bien.
+Les parties durent 12 à 16 volées de 3 flèches, ou 6 à 8 volées de 6 flèches. En Normal à 8 de moyenne, une partie sur trois se joue pendant la Furie finale : le paquet de colère sert de chronomètre. Une équipe plus faible joue en Facile, ou ses archers prennent le niveau Facile (×1,2, cordon favorable, jauge dès le 9). La simulation compte aussi les archers mis à terre : rarement en Normal, 1 à 2 par partie en Difficile. Les archers virtuels jouent de façon optimale ; une vraie équipe fait moins bien.
 
 ## Architecture
 
@@ -155,17 +155,17 @@ La saisie se fait en deux temps, sans viser de zone sur un dessin de blason :
 1. **Scores** : un pavé de gros boutons aux couleurs des anneaux (X, 10 à 1, M). Le rappel de la règle du cordon de l'archer (favorable ou défavorable selon son niveau) reste affiché au-dessus. ↶ retire la dernière flèche.
 2. **Assignation** : dès la dernière flèche, chaque flèche apparaît sur une ligne avec les actions de l'esprit ; elles sont toutes assignées d'avance à l'action suggérée (ou à la spécialité). Un toucher change l'action d'une flèche, « Tout sur » les assigne toutes d'un coup. Une flèche sur Créatures ou Racines affiche les cibles en jeu (PV, compte à rebours) pour choisir laquelle viser ; il n'y a plus de ciblage collectif pendant le conseil. Le total de chaque action (dégâts, PV) s'affiche en direct, bonus de spécialité et Hurlement de la Meute compris.
 
-Le moteur revalide toute saisie : scores bornés, X seulement sur un 10, aucune action pour une flèche hors cible, flèche assignée à une action absente renvoyée sur la spécialité, cible inconnue remplacée par la cible par défaut au moment de la résolution. Le brouillon de chaque volée survit aux changements d'onglet ; une volée envoyée reste corrigeable jusqu'à la résolution.
+Le moteur revalide toute saisie : scores bornés, X seulement sur un 10, aucune action pour une flèche hors cible, flèche assignée à une action absente renvoyée sur la spécialité, cible inconnue remplacée par la cible par défaut au moment de la résolution. Pour un compagnon, l'écran saute directement à l'assignation et le moteur impose les scores qu'il a tirés lui-même avec la graine de la partie. Le brouillon de chaque volée survit aux changements d'onglet ; une volée envoyée reste corrigeable jusqu'à la résolution.
 
 ### Guidage et mise en scène
-- **Étapes de volée** : l'état de jeu porte l'étape (`council` pour le conseil et le tir, puis `input`) ; l'hôte la fait avancer (« Flèches tirées : saisie ») et les téléphones des archers basculent d'eux-mêmes sur le tableau de combat pendant le conseil, puis sur leur cible.
-- **Conseil** : `src/game/advice.ts` liste les menaces (racine sur le point d'éclore, créatures, Gardiens à terre ou blessés, Arbre-Cœur affaibli, pouvoirs prêts, cartes restantes) et propose à chaque archer une action, qui sert aussi de répartition par défaut. Ce ne sont que des suggestions : l'équipe décide.
-- **Scène plein écran** : chaque événement du moteur porte un type (`intro`, `volley`, `nemesis`, `resolve`, `round`, `power`, `victory`, `defeat`) et ses données (carte jouée, détail de chaque volée : scores, action de chaque flèche, effets). La scène retourne la carte, égrène les volées une à une avec leurs effets et les coups critiques, puis attend un tap ; « Passer » accélère.
+- **Étapes** : l'état de jeu alterne la phase `volley` (étape `council` pour le conseil et le tir, puis `input`) et la phase `nemesis` (riposte, avec le nombre de cartes déjà révélées). L'hôte fait avancer (« Flèches tirées : saisie », « Résoudre », « Carte de la Némésis ») et les téléphones des archers basculent d'eux-mêmes sur le tableau de combat pendant le conseil, puis sur leur cible.
+- **Conseil** : `src/game/advice.ts` liste les menaces (racine sur le point d'éclore, créatures, Gardiens à terre ou blessés, Arbre-Cœur affaibli, pouvoirs prêts, riposte à venir, cartes restantes) et propose à chaque archer une action, qui sert aussi de répartition par défaut. Ce ne sont que des suggestions : l'équipe décide.
+- **Scène plein écran** : chaque événement du moteur porte un type (`intro`, `nemesis`, `fury`, `resolve`, `power`, `victory`, `defeat`) et ses données (carte jouée, détail de chaque volée : scores, action de chaque flèche, effets). La scène retourne la carte, égrène les volées une à une avec leurs effets et les coups critiques, puis attend un tap ; « Passer » accélère.
 - **Effets** : un calque de particules (`src/ui/fx.ts`, `FxLayer`) projette éclats violets quand la Némésis encaisse, échardes et flash rouge quand l'Arbre-Cœur est touché, feuilles pour les soins, étincelles dorées et tremblement d'écran pour un X, fumée quand une créature tombe, confettis de feuilles à la victoire, pétales noirs à la défaite. Les boutons ondulent sous le doigt, les PV défilent au même rythme que la barre (dont la piste découpe proprement le remplissage et la traînée de dégâts), les chiffres de dégâts jaillissent, les créatures abattues se désagrègent, la Némésis est entourée d'une couronne d'épines tournante (le portrait sépare l'animation de repos et celle d'impact pour qu'elles ne se coupent pas) et l'écran pulse en rouge quand l'Arbre-Cœur faiblit. Les animations respectent `prefers-reduced-motion`.
 - **Tableau retenu pendant la scène** : tant qu'une scène plein écran est ouverte, le tableau de combat garde l'état d'avant l'événement ; à la fermeture, il passe au nouvel état et toutes les animations (dégâts, morts, jauges) se jouent sous les yeux des joueurs.
 - **Dialogues** : aucune boîte native du navigateur ; les confirmations (résoudre sans toutes les saisies, libérer un archer, changer de Gardien, abandonner) passent par un dialogue aux couleurs du jeu.
 - **Sons** : effets synthétisés en direct (Web Audio, aucun fichier), désactivables par 🎵 ; la lecture vocale de la narration se règle par 🗣️.
-- **Fiche de la Némésis** : portrait, histoire, PV et cartes de colère restantes, cartes par manche, conseils pour la vaincre et liste complète de son paquet (niveau, PV, effet, carte déjà jouée ou en jeu). Accessible en touchant son portrait sur le tableau de combat, depuis la mise en place, l'onglet *Fiche* de l'archer et les règles.
+- **Fiche de la Némésis** : portrait, histoire, PV et cartes de colère restantes, cartes jouées après chaque volée, conseils pour la vaincre et liste complète de son paquet (niveau, PV, effet, carte déjà jouée ou en jeu). Accessible en touchant son portrait sur le tableau de combat, depuis la mise en place, l'onglet *Fiche* de l'archer et les règles.
 - **Fiche de l'Arbre-Cœur** : histoire, légende, PV, menaces en jeu, ce qui le blesse et comment le soigner. Accessible en touchant l'arbre sur le tableau de combat.
 - **Fiche de classe** : rôle, multiplicateurs par action, spécialité, action absente, pouvoir et conseils. Accessible depuis la mise en place, le choix du Gardien, l'onglet *Fiche* de l'archer, la saisie de l'hôte et les règles.
 

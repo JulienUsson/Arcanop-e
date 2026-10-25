@@ -1,5 +1,5 @@
 import { ACTION_ICONS, ACTION_LABELS, actionMultiplier, CLASSES } from './classes';
-import { describeCard, nextFury, powerAvailability } from './engine';
+import { describeCard, nemesisActions, nextFury, powerAvailability } from './engine';
 import { getCard, getNemesis } from './nemesis';
 import type { Action, GameState } from './types';
 
@@ -14,18 +14,18 @@ export function councilAdvice(state: GameState): Advice[] {
   const nemesis = getNemesis(state.config.nemesisId);
   const treeRatio = state.tree.hp / state.tree.maxHp;
   const nemesisRatio = state.nemesis.hp / state.nemesis.maxHp;
-  const endingRound = state.turnDeck.length === 0;
+  const turns = nemesisActions(state.config);
 
   for (const root of [...state.roots].sort((a, b) => a.countdown - b.countdown)) {
     const card = getCard(state.config.nemesisId, root.cardId);
-    if (root.countdown <= 1) {
+    if (root.countdown <= turns) {
       out.push({
         icon: '⚠️',
         urgent: true,
-        text: `${card.name} éclot ${endingRound ? 'à la fin de cette manche' : 'en fin de manche'} (${describeCard(card, state).replace('À l’éclosion : ', '')}). Il lui reste ${root.hp} PV.`,
+        text: `${card.name} éclot à la riposte de ${nemesis.name}, juste après cette volée (${describeCard(card, state).replace('À l’éclosion : ', '')}). Il lui reste ${root.hp} PV.`,
       });
     } else {
-      out.push({ icon: '🌿', text: `${card.name} éclot dans ${root.countdown} manches (${root.hp} PV).` });
+      out.push({ icon: '🌿', text: `${card.name} éclot dans ${root.countdown} tour${root.countdown > 1 ? 's' : ''} de la Némésis (${root.hp} PV).` });
     }
   }
 
@@ -55,13 +55,10 @@ export function councilAdvice(state: GameState): Advice[] {
     }
   }
 
-  const nemesisTurns = state.turnDeck.filter((c) => c === 'nemesis').length;
-  if (state.turnDeck.length > 0) {
-    out.push({
-      icon: '🃏',
-      text: `Encore ${state.turnDeck.length} carte${state.turnDeck.length > 1 ? 's' : ''} dans cette manche, dont ${nemesisTurns} tour${nemesisTurns > 1 ? 's' : ''} de la Némésis.`,
-    });
-  }
+  out.push({
+    icon: '🃏',
+    text: `Après la volée, ${nemesis.name} riposte : ${turns > 1 ? `${turns} cartes de colère` : 'une carte de colère'}, puis ses créatures agissent et ses racines grandissent.`,
+  });
   if (state.wrathDeck.length > 0) {
     out.push({ icon: '📜', text: `Paquet de colère : ${state.wrathDeck.length} carte${state.wrathDeck.length > 1 ? 's' : ''} avant sa Furie finale.` });
   } else {
@@ -85,7 +82,7 @@ export function suggestion(state: GameState, playerId: string): Suggestion | nul
   const player = state.players.find((p) => p.id === playerId);
   if (!player) return null;
   const has = (a: Action) => actionMultiplier(player.classId, a) > 0;
-  const urgentRoot = state.roots.some((r) => r.countdown <= 1);
+  const urgentRoot = state.roots.some((r) => r.countdown <= nemesisActions(state.config));
   let action: Action = CLASSES[player.classId].specialty === 'heal' ? 'nemesis' : CLASSES[player.classId].specialty;
   let reason = action === 'nemesis' ? 'Frappez la Némésis.' : 'Misez sur votre spécialité.';
   const down = state.players.find((p) => p.hp <= 0);
@@ -99,7 +96,7 @@ export function suggestion(state: GameState, playerId: string): Suggestion | nul
     reason = 'Une racine va éclore.';
   } else if (has('creatures') && state.creatures.length > 0 && (player.classId === 'ours' || state.creatures.length > 1)) {
     action = 'creatures';
-    reason = 'Les créatures frappent à chaque manche.';
+    reason = 'Les créatures frappent à chaque tour de la Némésis.';
   } else if (has('roots') && state.roots.length > 0 && player.classId === 'hibou') {
     action = 'roots';
     reason = 'Détruisez les racines avant qu’elles n’éclosent.';

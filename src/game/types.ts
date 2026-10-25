@@ -23,6 +23,7 @@ export interface PlayerConfig {
   classId: ClassId;
   level: ArcherLevel;
   coef: number;
+  bot?: boolean;
 }
 
 export interface GameConfig {
@@ -131,6 +132,7 @@ export interface Creature {
   cardId: string;
   hp: number;
   maxHp: number;
+  fresh?: boolean;
 }
 
 export interface Root {
@@ -139,16 +141,17 @@ export interface Root {
   hp: number;
   maxHp: number;
   countdown: number;
+  fresh?: boolean;
 }
 
-export type TurnCard = 'volley' | 'nemesis';
+export type Shot = Pick<Arrow, 'score' | 'x'>;
 
 export type VolleyStep = 'council' | 'input';
 
 export type Phase =
   | { kind: 'lobby' }
-  | { kind: 'turn' }
-  | { kind: 'volley'; volley: number; step: VolleyStep; submissions: Record<string, Submission> }
+  | { kind: 'nemesis'; drawn: number; total: number }
+  | { kind: 'volley'; volley: number; step: VolleyStep; submissions: Record<string, Submission>; bots: Record<string, Shot[]> }
   | { kind: 'over'; result: 'victory' | 'defeat'; reason: string };
 
 export type LogTone = 'info' | 'good' | 'bad' | 'power';
@@ -159,7 +162,7 @@ export interface LogEntry {
   text: string;
 }
 
-export type EventKind = 'intro' | 'volley' | 'nemesis' | 'fury' | 'resolve' | 'round' | 'power' | 'victory' | 'defeat';
+export type EventKind = 'intro' | 'nemesis' | 'fury' | 'resolve' | 'power' | 'victory' | 'defeat';
 
 export interface Effect {
   action: Action;
@@ -194,7 +197,6 @@ export interface GameState {
   gameId: string;
   config: GameConfig;
   rng: number;
-  round: number;
   volleyCount: number;
   phase: Phase;
   nemesis: { hp: number; maxHp: number };
@@ -202,8 +204,6 @@ export interface GameState {
   players: Player[];
   creatures: Creature[];
   roots: Root[];
-  turnDeck: TurnCard[];
-  turnDiscard: TurnCard[];
   wrathDeck: string[];
   wrathDiscard: string[];
   revealed: boolean;

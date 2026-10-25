@@ -1,6 +1,6 @@
 import { ACTION_ICONS, ACTION_LABELS, actionMultiplier, CLASSES } from '../../game/classes';
-import { CERF_ARCHER_HEAL, CERF_HEAL } from '../../game/difficulty';
-import { cerfHeal, gaugeMax } from '../../game/engine';
+import { CERF_ARCHER_HEAL, CERF_HEAL, GAUGE_MAX } from '../../game/difficulty';
+import { cerfHeal } from '../../game/engine';
 import { CRIT_POINTS } from '../../game/target';
 import type { Action, ClassId, GameConfig } from '../../game/types';
 
@@ -8,7 +8,7 @@ const ALL_ACTIONS: Action[] = ['nemesis', 'creatures', 'roots', 'heal'];
 
 const ACTION_HELP: Record<Action, string> = {
   nemesis: 'Dégâts directs à la Némésis.',
-  creatures: 'Abat les créatures, qui agissent à chaque fin de manche. Cible choisie par flèche.',
+  creatures: 'Abat les créatures, qui agissent à chaque tour de la Némésis. Cible choisie par flèche.',
   roots: 'Détruit les racines avant qu’elles n’éclosent. Cible choisie par flèche.',
   heal: 'Rend la moitié des points des flèches à l’Arbre-Cœur ou à un Gardien.',
 };
@@ -60,8 +60,8 @@ export function ClassSheet({ classId, config }: { classId: ClassId; config?: Gam
           {classId === 'cerf' ? `Soigne l’Arbre-Cœur de ${treeHeal} PV et chaque Gardien de ${CERF_ARCHER_HEAL} PV.` : cls.powerText}
         </p>
         <p className="hint">
-          {config ? `Jauge de ${gaugeMax(config)} cases` : 'Jauge d’autant de cases que de flèches par volée'} : un 10 la charge de 1, un X de 2 ; au niveau
-          Facile, un 9 la charge aussi de 1. Le pouvoir s’active quand vous le décidez.
+          Jauge de {GAUGE_MAX} : un 10 la charge de 1, un X de 2 ; au niveau Facile, un 9 la charge aussi de 1. Le pouvoir s’active quand vous le
+          décidez.
         </p>
       </section>
 

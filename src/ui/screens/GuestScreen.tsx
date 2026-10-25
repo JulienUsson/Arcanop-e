@@ -154,7 +154,7 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
         <h1>Choisissez votre Gardien</h1>
         <section className="panel">
           <ul className="claim-list">
-            {state.players.map((p) => {
+            {state.players.filter((p) => !p.bot).map((p) => {
               const cls = CLASSES[p.classId];
               const taken = roster.find((r) => r.playerId === p.id)?.status === 'online';
               return (

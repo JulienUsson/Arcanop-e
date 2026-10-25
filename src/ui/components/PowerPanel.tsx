@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { chargeText, CLASSES } from '../../game/classes';
-import { gaugeMax, powerAvailability } from '../../game/engine';
+import { GAUGE_MAX } from '../../game/difficulty';
+import { powerAvailability } from '../../game/engine';
 import { getCard } from '../../game/nemesis';
 import { burstAt } from '../fx';
 import type { GameState } from '../../game/types';
@@ -19,8 +20,7 @@ export function PowerPanel({ state, playerId, disabled, onActivate }: Props) {
   if (!player) return null;
   const cls = CLASSES[player.classId];
   const availability = powerAvailability(state, playerId);
-  const max = gaugeMax(state.config);
-  const ready = player.gauge >= max;
+  const ready = player.gauge >= GAUGE_MAX;
 
   const fire = (targetUid?: string) => {
     burstAt(document.querySelector('.power-panel'), 'sparks', 24, cls.color);
@@ -41,7 +41,7 @@ export function PowerPanel({ state, playerId, disabled, onActivate }: Props) {
           </div>
           <small>{cls.powerText}</small>
         </div>
-        <Gauge value={player.gauge} max={max} />
+        <Gauge value={player.gauge} />
       </div>
       {choosing ? (
         <div className="root-choice">
