@@ -3697,3 +3697,78 @@ button.danger-solid {
   background: rgba(111, 207, 124, 0.12);
   border-color: rgba(111, 207, 124, 0.5);
 }
+
+/* Furie finale */
+
+.wrath-info.fury {
+  color: #ffb08a;
+  text-shadow: 0 0 10px rgba(255, 90, 40, 0.8);
+  animation: nudge 1s ease-in-out infinite;
+}
+
+.arena.fury {
+  border-color: #b8433a;
+  background: radial-gradient(ellipse at 20% 50%, rgba(79, 191, 106, 0.14), transparent 60%),
+    radial-gradient(ellipse at 80% 50%, rgba(220, 60, 40, 0.38), transparent 60%), var(--panel);
+}
+
+.arena.fury .portrait.nemesis .portrait-orb {
+  background: radial-gradient(circle at 40% 35%, #ff7a5c, #6a1018 70%);
+  animation: fury-pulse 0.9s ease-in-out infinite;
+}
+
+.arena.fury .portrait.nemesis::before {
+  border-color: rgba(255, 120, 60, 0.85);
+  animation-duration: 4s;
+}
+
+@keyframes fury-pulse {
+  50% {
+    box-shadow: 0 0 46px rgba(255, 80, 40, 1);
+    transform: scale(1.07);
+  }
+}
+
+.stage-portrait.fury {
+  background: radial-gradient(circle at 40% 35%, #ff7a5c, #4a0a10 70%);
+  box-shadow: 0 0 70px rgba(255, 70, 30, 0.95);
+  animation: rise 1s cubic-bezier(0.2, 1.2, 0.4, 1), fury-pulse 0.9s ease-in-out 1s infinite;
+}
+
+.stage-fury .stage-glow {
+  background: radial-gradient(circle at 50% 35%, rgba(255, 70, 30, 0.4), transparent 60%);
+}
+
+.stage-fury .stage-rays {
+  background: repeating-conic-gradient(from 0deg, rgba(255, 90, 40, 0.12) 0deg 6deg, transparent 6deg 18deg);
+  animation-duration: 12s;
+}
+
+.fury-badge {
+  padding: 0.25rem 0.9rem;
+  border-radius: 99px;
+  font-family: Cinzel, Georgia, serif;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(180deg, #e2343a, #8a1018);
+  box-shadow: 0 0 18px rgba(255, 60, 30, 0.8);
+  animation: stamp-in 0.5s ease-out;
+}
+
+.stage-title.fury-title {
+  color: #ffb08a;
+  text-shadow: 0 0 22px rgba(255, 80, 40, 0.9);
+}
+
+.fury-section {
+  margin-top: 1rem;
+  padding: 0.2rem 0.8rem 0.8rem;
+  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(226, 52, 58, 0.18), transparent);
+  border: 1px solid #7a2a30;
+}
+
+.fury-next {
+  font-weight: 700;
+  color: #ffb08a;
+}

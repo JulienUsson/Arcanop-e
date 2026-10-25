@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createGame, powerAvailability, reduce, treeDamageFactor, volleyPool } from './engine';
+import { createGame, nextFury, powerAvailability, reduce, treeDamageFactor, volleyPool } from './engine';
 import { availableActions } from './classes';
 import { GAUGE_MAX } from './difficulty';
 import type { Action, Arrow, GameConfig, GameState, Submission } from './types';
@@ -277,10 +277,30 @@ describe('moteur', () => {
     expect(s.round).toBe(2);
   });
 
-  it('perd quand le paquet de colère est épuisé', () => {
+  it('déclenche une Furie finale de plus en plus forte quand le paquet est vide', () => {
     let s = started();
     s = structuredClone(s);
     s.wrathDeck = [];
+    s.turnDeck = ['nemesis', 'nemesis'];
+    expect(nextFury(s)).toEqual({ level: 1, tree: Math.floor(10 * treeDamageFactor(config)), archers: 3 });
+    s = reduce(s, { type: 'draw' });
+    expect(s.phase.kind).toBe('turn');
+    expect(s.fury).toBe(1);
+    expect(s.lastEvent).toMatchObject({ kind: 'fury', fury: 1 });
+    expect(s.tree.hp).toBe(45 - Math.floor(10 * treeDamageFactor(config)));
+    expect(s.players.map((p) => p.hp)).toEqual([12, 12, 12, 12]);
+    s = { ...s, tree: { hp: 45, maxHp: 45 } };
+    s = reduce(s, { type: 'draw' });
+    expect(s.fury).toBe(2);
+    expect(s.tree.hp).toBe(45 - Math.floor(16 * treeDamageFactor(config)));
+    expect(s.players.map((p) => p.hp)).toEqual([8, 8, 8, 8]);
+  });
+
+  it('perd quand la Furie abat l’Arbre-Cœur', () => {
+    let s = started();
+    s = structuredClone(s);
+    s.wrathDeck = [];
+    s.tree.hp = 5;
     s.turnDeck = ['nemesis'];
     s = reduce(s, { type: 'draw' });
     expect(s.phase).toMatchObject({ kind: 'over', result: 'defeat' });

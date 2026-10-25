@@ -146,7 +146,7 @@ export function Board({ state, roster, you }: Props) {
   return (
     <div className="board">
       {treeLow && <div className="danger-vignette" aria-hidden />}
-      <section className={`arena${treeLow ? ' tree-low' : ''}`}>
+      <section className={`arena${treeLow ? ' tree-low' : ''}${state.wrathDeck.length === 0 && state.round > 0 ? ' fury' : ''}`}>
         <div className="combatant tree-side">
           <Portrait kind="tree" hp={state.tree.hp} max={state.tree.maxHp} onClick={() => setTreeSheet(true)}>
             🌳
@@ -182,9 +182,15 @@ export function Board({ state, roster, you }: Props) {
             ))}
           </span>
         </div>
-        <div className="wrath-info" title="Cartes de colère restantes">
-          <span className="wrath-stack">📜</span> {state.wrathDeck.length}
-        </div>
+        {state.wrathDeck.length > 0 ? (
+          <div className="wrath-info" title="Cartes de colère restantes">
+            <span className="wrath-stack">📜</span> {state.wrathDeck.length}
+          </div>
+        ) : (
+          <div className="wrath-info fury" title="Paquet de colère vide : Furie finale">
+            🔥 {state.fury > 0 ? `Furie ${state.fury}` : 'Furie imminente'}
+          </div>
+        )}
         {state.wolfBoost > 0 && (
           <div className="badge power">🐺 La Meute chasse : dégâts ×{String(state.wolfBoost).replace('.', ',')} à la prochaine volée</div>
         )}

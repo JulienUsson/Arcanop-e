@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ACTION_ICONS, CLASSES } from '../../game/classes';
-import { describeCard } from '../../game/engine';
+import { describeCard, nextFury } from '../../game/engine';
 import { getCard, getNemesis } from '../../game/nemesis';
 import { arrowLabel, RING_COLORS } from '../../game/target';
 import type { CorruptionCard, GameEvent, GameState, VolleyResult } from '../../game/types';
@@ -13,6 +13,7 @@ const CONTINUE_LABEL: Record<GameEvent['kind'], string> = {
   intro: 'Que la chasse commence !',
   volley: 'Au conseil !',
   nemesis: 'Continuer',
+  fury: 'Tenir bon !',
   resolve: 'Continuer',
   round: 'Nouvelle manche',
   power: 'Continuer',
@@ -24,6 +25,7 @@ const OPENING_SOUND: Partial<Record<GameEvent['kind'], Sound>> = {
   intro: 'nemesis',
   volley: 'card',
   nemesis: 'nemesis',
+  fury: 'defeat',
   round: 'card',
   power: 'power',
   victory: 'victory',
@@ -64,6 +66,12 @@ const OPENING_FX: Partial<Record<GameEvent['kind'], () => void>> = {
     setTimeout(() => burst('petals', innerWidth / 2, innerHeight * 0.32, 18), 300);
   },
   volley: () => setTimeout(() => burst('sparks', innerWidth / 2, innerHeight * 0.35, 26), 650),
+  fury: () => {
+    flash('rgba(200, 30, 40, 0.6)');
+    shake('hard');
+    [0, 400, 900].forEach((t) => setTimeout(() => burst('embers', innerWidth / 2, innerHeight * 0.3, 30), t));
+    setTimeout(() => burst('shards', innerWidth / 2, innerHeight * 0.3, 24, '#e2343a'), 200);
+  },
   nemesis: () => {
     flash('rgba(120, 30, 160, 0.5)');
     shake('soft');
@@ -182,6 +190,29 @@ function StageContent({ event, state, revealed }: { event: GameEvent; state: Gam
       );
     case 'nemesis':
       return <NemesisCard event={event} state={state} />;
+    case 'fury': {
+      const next = nextFury(state);
+      return (
+        <>
+          <div className="stage-portrait nemesis fury rise">{nemesis.portrait}</div>
+          <div className="fury-badge">🔥 Furie {event.fury}</div>
+          <h1 className="stage-title fury-title">{event.title}</h1>
+          <p className="stage-story">{event.narration}</p>
+          <ul className="stage-lines">
+            {event.lines
+              .filter((l) => l.includes('Déchaînement') || l.includes('à terre'))
+              .map((line, i) => (
+                <li key={i} className="pop delayed">
+                  {line}
+                </li>
+              ))}
+          </ul>
+          <p className="stage-sub">
+            Prochain Déchaînement : {next.tree} à l’Arbre-Cœur, {next.archers} à chaque Gardien.
+          </p>
+        </>
+      );
+    }
     case 'power': {
       const player = state.players.find((p) => p.id === event.playerId);
       const cls = player ? CLASSES[player.classId] : null;

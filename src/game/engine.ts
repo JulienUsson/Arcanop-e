@@ -1,5 +1,17 @@
 import { ACTION_LABELS, ACTIONS, actionMultiplier, CLASSES, levelFromCoef } from './classes';
-import { CERF_ARCHER_HEAL, CERF_HEAL, DIFFICULTIES, GAUGE_MAX, HEAL_FACTOR, REFERENCE_ARROWS, WEAKENED_FACTOR } from './difficulty';
+import {
+  CERF_ARCHER_HEAL,
+  CERF_HEAL,
+  DIFFICULTIES,
+  FURY_ARCHERS_BASE,
+  FURY_ARCHERS_STEP,
+  FURY_TREE_BASE,
+  FURY_TREE_STEP,
+  GAUGE_MAX,
+  HEAL_FACTOR,
+  REFERENCE_ARROWS,
+  WEAKENED_FACTOR,
+} from './difficulty';
 import { getCard, getNemesis, ROUND_NARRATIONS, VOLLEY_NARRATIONS } from './nemesis';
 import { nextRandom, shuffle } from './rng';
 import { arrowLabel, arrowPoints, isYellow } from './target';
@@ -126,6 +138,7 @@ export function createGame(config: GameConfig, seed: number, gameId: string): Ga
     wrathDiscard: [],
     revealed: false,
     wolfBoost: 0,
+    fury: 0,
     uidCounter: 0,
     eventCounter: 0,
     lastEvent: null,
@@ -437,13 +450,44 @@ function endRound(ctx: Ctx) {
   ctx.event('round', title, ctx.pick(ROUND_NARRATIONS), 'info');
 }
 
+export function nextFury(state: GameState): { level: number; tree: number; archers: number } {
+  const step = state.fury;
+  return {
+    level: step + 1,
+    tree: treeDamage(state, FURY_TREE_BASE + FURY_TREE_STEP * step),
+    archers: archerDamage(state, FURY_ARCHERS_BASE + FURY_ARCHERS_STEP * step),
+  };
+}
+
+const FURY_NARRATIONS = [
+  'Son paquet de colère est vide, mais sa rage ne l’est pas. Mordelune se déchaîne : des ronces noires jaillissent de partout à la fois.',
+  'La Ronce Noire hurle et frappe sans retenue. Chaque Déchaînement sera plus terrible que le précédent : achevez-la vite !',
+  'La forêt entière tremble sous sa fureur. Il n’y a plus de ruse, plus de plan : seulement la rage.',
+];
+
+function unleashFury(ctx: Ctx) {
+  const s = ctx.state;
+  const nemesis = getNemesis(s.config.nemesisId);
+  const level = s.fury + 1;
+  const tree = FURY_TREE_BASE + FURY_TREE_STEP * s.fury;
+  const archers = FURY_ARCHERS_BASE + FURY_ARCHERS_STEP * s.fury;
+  s.fury = level;
+  s.revealed = false;
+  if (level === 1) ctx.line(`Le paquet de colère est vide : ${nemesis.name} entre dans sa Furie finale !`, 'bad');
+  const source = `Déchaînement ${level}`;
+  damageTreeBy(ctx, tree, source);
+  damageArchersBy(ctx, archers, source);
+  s.phase = { kind: 'turn' };
+  if (checkEnd(ctx)) return;
+  ctx.extra.fury = level;
+  ctx.event('fury', level === 1 ? 'Furie finale' : `Furie finale — Déchaînement ${level}`, FURY_NARRATIONS[Math.min(level, FURY_NARRATIONS.length) - 1], 'bad');
+}
+
 function playNemesisTurn(ctx: Ctx) {
   const s = ctx.state;
   const nemesis = getNemesis(s.config.nemesisId);
   if (s.wrathDeck.length === 0) {
-    s.phase = { kind: 'over', result: 'defeat', reason: 'Le paquet de colère est épuisé.' };
-    ctx.line(`Le paquet de colère de ${nemesis.name} est épuisé : la Corruption triomphe.`, 'bad');
-    ctx.event('defeat', 'Défaite…', nemesis.defeat, 'bad');
+    unleashFury(ctx);
     return;
   }
   const [cardId, ...rest] = s.wrathDeck;
@@ -784,6 +828,7 @@ export function migrateState(state: GameState): GameState {
   }
   if (state.lastEvent && (!state.lastEvent.kind || 'hits' in state.lastEvent)) state.lastEvent = null;
   if (state.wolfBoost === 1) state.wolfBoost = 2;
+  state.fury ??= 0;
   const hp = DIFFICULTIES[state.config.difficulty].archerHp;
   state.config.players.forEach((p) => (p.level ??= levelFromCoef(p.coef)));
   state.players.forEach((p) => {

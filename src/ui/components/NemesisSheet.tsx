@@ -1,5 +1,5 @@
-import { DIFFICULTIES } from '../../game/difficulty';
-import { arrowSlots, describeCard, scaleFactor } from '../../game/engine';
+import { DIFFICULTIES, FURY_ARCHERS_BASE, FURY_ARCHERS_STEP, FURY_TREE_BASE, FURY_TREE_STEP } from '../../game/difficulty';
+import { arrowSlots, describeCard, nextFury, scaleFactor } from '../../game/engine';
 import { getNemesis } from '../../game/nemesis';
 import type { CorruptionCard, GameConfig, GameState } from '../../game/types';
 
@@ -76,9 +76,21 @@ export function NemesisSheet({ nemesisId, config, state }: Props) {
             <li key={tip}>{tip}</li>
           ))}
         </ul>
-        <p className="hint">
-          Victoire quand ses PV tombent à 0. Défaite si l’Arbre-Cœur tombe, ou si elle doit jouer alors que son paquet de colère est vide.
+        <p className="hint">Victoire quand ses PV tombent à 0. Défaite si l’Arbre-Cœur tombe.</p>
+      </section>
+
+      <section className="fury-section">
+        <h3>🔥 Furie finale</h3>
+        <p>
+          Quand son paquet de colère est vide, chaque carte Némésis déclenche un Déchaînement : {FURY_TREE_BASE} dégâts à l’Arbre-Cœur
+          et {FURY_ARCHERS_BASE} à chaque Gardien, puis +{FURY_TREE_STEP} et +{FURY_ARCHERS_STEP} à chaque Déchaînement suivant (avant le
+          multiplicateur de difficulté).
         </p>
+        {state && state.wrathDeck.length === 0 && (
+          <p className="fury-next">
+            Prochain Déchaînement : {nextFury(state).tree} à l’Arbre-Cœur, {nextFury(state).archers} à chaque Gardien.
+          </p>
+        )}
       </section>
 
       <section>
