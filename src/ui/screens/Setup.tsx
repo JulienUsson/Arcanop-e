@@ -181,7 +181,7 @@ export function Setup({ onCreate, onBack }: { onCreate: (config: GameConfig) => 
 
       {sheet && (
         <Modal label="Fiche de classe" onClose={() => setSheet(null)}>
-          <ClassSheet classId={sheet} />
+          <ClassSheet classId={sheet} config={config} />
         </Modal>
       )}
       {nemesisSheet && (

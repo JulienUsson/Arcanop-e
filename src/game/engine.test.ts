@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createGame, nextFury, powerAvailability, reduce, treeDamageFactor, volleyPool } from './engine';
+import { createGame, gaugeMax, nextFury, powerAvailability, reduce, treeDamageFactor, volleyPool } from './engine';
 import { availableActions } from './classes';
-import { GAUGE_MAX } from './difficulty';
 import type { Action, Arrow, GameConfig, GameState, Submission } from './types';
 
 const config: GameConfig = {
@@ -47,6 +46,20 @@ describe('moteur', () => {
     expect(s.phase.kind).toBe('lobby');
   });
 
+  it('adapte la Némésis, l’Arbre-Cœur et la jauge à l’équipe', () => {
+    const duo: GameConfig = { ...config, players: config.players.slice(0, 2), arrowsPerVolley: 6 };
+    const s = createGame(duo, 1, 'g');
+    expect(s.nemesis.hp).toBe(Math.floor(160 * 12 * 0.72));
+    expect(s.tree.hp).toBe(45);
+    expect(gaugeMax(duo)).toBe(6);
+    const solo = createGame({ ...config, players: config.players.slice(0, 1) }, 1, 'g');
+    expect(solo.nemesis.hp).toBe(Math.floor(160 * 3 * 0.5));
+    expect(solo.tree.hp).toBe(Math.round(45 * 0.7));
+    const big = createGame({ ...config, players: [...config.players, ...config.players.map((p) => ({ ...p, id: `${p.id}2` }))], arrowsPerVolley: 6 }, 1, 'g');
+    expect(big.nemesis.hp).toBe(Math.floor(160 * 48 * 1.29));
+    expect(big.tree.hp).toBe(Math.round(45 * 1.5));
+  });
+
   it('mélange un paquet d’ordre de tour par manche', () => {
     const s = started();
     expect(s.round).toBe(1);
@@ -74,7 +87,7 @@ describe('moteur', () => {
     s = reduce(s, { type: 'submit', playerId: 'b', submission: volley(['X', 10, 9]) });
     s = reduce(s, { type: 'submit', playerId: 'd', submission: volley([9, 10, 8]) });
     s = reduce(s, { type: 'resolve' });
-    expect(s.players.map((p) => p.gauge)).toEqual([0, GAUGE_MAX, 0, 2]);
+    expect(s.players.map((p) => p.gauge)).toEqual([0, gaugeMax(config), 0, 2]);
   });
 
   it('compte le X comme un coup critique', () => {
@@ -193,7 +206,7 @@ describe('moteur', () => {
   it('active les pouvoirs', () => {
     let s = drawUntil(started(), 'volley');
     s = structuredClone(s);
-    s.players.forEach((p) => (p.gauge = GAUGE_MAX));
+    s.players.forEach((p) => (p.gauge = gaugeMax(config)));
     s.roots = [{ uid: 'r1', cardId: 'racine-etrangleuse', hp: 20, maxHp: 20, countdown: 1 }];
     s.tree.hp = 20;
     expect(powerAvailability(s, 'a').ok).toBe(true);
@@ -239,7 +252,7 @@ describe('moteur', () => {
     let s = drawUntil(started(), 'volley');
     s = structuredClone(s);
     s.players.forEach((p) => {
-      p.gauge = GAUGE_MAX;
+      p.gauge = gaugeMax(config);
       p.hp = 0;
     });
     s.tree.hp = 10;

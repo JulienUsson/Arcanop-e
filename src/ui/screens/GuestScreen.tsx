@@ -266,7 +266,7 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
               {getNemesis(state.config.nemesisId).portrait} La Némésis
             </button>
           </div>
-          {sheetView === 'me' ? <ClassSheet classId={me.classId} /> : <NemesisSheet nemesisId={state.config.nemesisId} state={state} />}
+          {sheetView === 'me' ? <ClassSheet classId={me.classId} config={state.config} /> : <NemesisSheet nemesisId={state.config.nemesisId} state={state} />}
           <button
             className="ghost wide"
             disabled={!connected}
@@ -287,7 +287,7 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
 
       {welcome && (
         <Modal label="Votre esprit" onClose={() => setWelcome(false)}>
-          <ClassSheet classId={me.classId} />
+          <ClassSheet classId={me.classId} config={state.config} />
           <button className="primary big wide" onClick={() => setWelcome(false)}>
             Je suis prêt
           </button>

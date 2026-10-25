@@ -1,5 +1,5 @@
 import { DIFFICULTIES, FURY_ARCHERS_BASE, FURY_ARCHERS_STEP, FURY_TREE_BASE, FURY_TREE_STEP } from '../../game/difficulty';
-import { arrowSlots, describeCard, nextFury, scaleFactor } from '../../game/engine';
+import { arrowSlots, describeCard, nextFury, scaleFactor, teamHpFactor } from '../../game/engine';
 import { getNemesis } from '../../game/nemesis';
 import type { CorruptionCard, GameConfig, GameState } from '../../game/types';
 
@@ -28,7 +28,7 @@ export function NemesisSheet({ nemesisId, config, state }: Props) {
   const nemesis = getNemesis(nemesisId);
   const cfg = state?.config ?? config;
   const diff = cfg ? DIFFICULTIES[cfg.difficulty] : null;
-  const maxHp = state?.nemesis.maxHp ?? (cfg && diff ? Math.round(diff.nemesisHpPerArrow * arrowSlots(cfg)) : null);
+  const maxHp = state?.nemesis.maxHp ?? (cfg && diff ? Math.floor(diff.nemesisHpPerArrow * arrowSlots(cfg) * teamHpFactor(cfg)) : null);
   const deckSize = diff ? diff.tiers.reduce((a, b) => a + b, 0) : null;
   const scale = cfg ? scaleFactor(cfg) : 1;
 

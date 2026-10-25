@@ -56,7 +56,6 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyDef> = {
   },
 };
 
-export const GAUGE_MAX = 3;
 export const HEAL_FACTOR = 0.5;
 export const CERF_HEAL = 15;
 export const CERF_ARCHER_HEAL = 5;
@@ -66,3 +65,4 @@ export const FURY_TREE_STEP = 6;
 export const FURY_ARCHERS_BASE = 3;
 export const FURY_ARCHERS_STEP = 1;
 export const REFERENCE_ARROWS = 12;
+export const TEAM_HP_FACTORS = [1, 0.5, 0.72, 0.87, 1, 1.06, 1.14, 1.21, 1.29];

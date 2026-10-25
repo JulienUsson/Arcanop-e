@@ -1,5 +1,4 @@
 import { ACTION_ICONS, ACTION_LABELS, CLASS_IDS, SPECIALTY_MULTIPLIER } from '../../game/classes';
-import { GAUGE_MAX } from '../../game/difficulty';
 import { CRIT_POINTS } from '../../game/target';
 import { MORDELUNE } from '../../game/nemesis';
 import { ClassSheet } from '../components/ClassSheet';
@@ -33,8 +32,8 @@ export function Rules({ onBack }: { onBack: () => void }) {
             a aussi une action absente.
           </li>
           <li>
-            La jauge se charge de 1 sur un 10 et de 2 sur un X ; au niveau Facile, un 9 la charge aussi de 1. À {GAUGE_MAX}, le pouvoir de l’esprit
-            s’active.
+            La jauge a autant de cases que de flèches par volée. Elle se charge de 1 sur un 10 et de 2 sur un X ; au niveau Facile, un 9 la
+            charge aussi de 1. Pleine, le pouvoir de l’esprit s’active.
           </li>
         </ul>
       </section>

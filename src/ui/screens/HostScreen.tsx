@@ -191,7 +191,7 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
               />
               {sheet && (
                 <Modal label="Fiche de classe" onClose={() => setSheet(false)}>
-                  <ClassSheet classId={selectedPlayer.classId} />
+                  <ClassSheet classId={selectedPlayer.classId} config={state.config} />
                 </Modal>
               )}
             </>
