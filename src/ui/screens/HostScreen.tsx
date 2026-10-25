@@ -6,7 +6,8 @@ import type { HostSession } from '../../net/host';
 import { Board } from '../components/Board';
 import { ClassSheet } from '../components/ClassSheet';
 import { CopyCode } from '../components/CopyCode';
-import { EventStage } from '../components/EventStage';
+import { useConfirm } from '../components/Dialog';
+import { EventStage, useStage } from '../components/EventStage';
 import { Modal } from '../components/Modal';
 import { Chronicle, useNarrationVoice } from '../components/Narration';
 import { PhaseGuide } from '../components/PhaseGuide';
@@ -25,6 +26,8 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
   const [tab, setTab] = useState<Tab>(state.phase.kind === 'lobby' ? 'archers' : 'combat');
   const [selected, setSelected] = useState<string | null>(null);
   const [sheet, setSheet] = useState(false);
+  const confirm = useConfirm();
+  const stage = useStage(state);
   useWakeLock(true);
   useNarrationVoice(state.lastEvent);
 
@@ -36,9 +39,24 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
     selected && state.players.some((p) => p.id === selected) ? selected : (freePlayers[0]?.id ?? state.players[0]?.id);
   const selectedPlayer = state.players.find((p) => p.id === selectedId);
 
-  const resolve = () => {
-    const missing = state.players.length - submittedCount;
-    if (missing > 0 && !confirm(`${missing} archer${missing > 1 ? 's n’ont' : ' n’a'} pas saisi sa volée. Résoudre quand même ?`)) return;
+  const resolve = async () => {
+    const missing = state.players.filter((p) => phase.kind === 'volley' && !phase.submissions[p.id]);
+    if (
+      missing.length > 0 &&
+      !(await confirm({
+        icon: '⚔️',
+        title: 'Résoudre la volée ?',
+        message: (
+          <>
+            {missing.map((p) => p.name).join(', ')} {missing.length > 1 ? 'n’ont' : 'n’a'} pas encore saisi {missing.length > 1 ? 'leur' : 'sa'} volée.
+            Leurs flèches ne compteront pas.
+          </>
+        ),
+        confirmLabel: 'Résoudre quand même',
+        cancelLabel: 'Attendre',
+      }))
+    )
+      return;
     session.dispatch({ type: 'resolve' });
     setTab('combat');
   };
@@ -56,7 +74,7 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
 
   return (
     <div className="screen host">
-      <EventStage state={state} event={state.lastEvent} />
+      <EventStage state={state} event={stage.event} onClose={stage.close} />
       {phase.kind === 'over' ? (
         <EndSummary
           state={state}
@@ -115,14 +133,14 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
                     <button className="secondary big" onClick={() => setTab('saisie')}>
                       🎯 Saisir
                     </button>
-                    <button className={`primary big${submittedCount === state.players.length ? ' glow' : ''}`} onClick={resolve}>
+                    <button className={`primary big${submittedCount === state.players.length ? ' glow' : ''}`} onClick={() => void resolve()}>
                       ⚔️ Résoudre
                     </button>
                   </div>
                 )}
                 {undo}
               </PhaseGuide>
-              <Board state={state} roster={roster} onFocus={focus} />
+              <Board state={stage.boardState ?? state} roster={roster} onFocus={focus} />
               <Chronicle log={state.log} />
             </>
           )}
@@ -189,6 +207,7 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
 }
 
 function ArchersTab({ session, onQuit }: { session: HostSession; onQuit: () => void }) {
+  const confirm = useConfirm();
   const snap = useSyncExternalStore(session.subscribe, session.getSnapshot);
   const { state, roster } = snap;
   const [showLink, setShowLink] = useState(false);
@@ -211,7 +230,18 @@ function ArchersTab({ session, onQuit }: { session: HostSession; onQuit: () => v
                   {entry?.status === 'offline' && <span className="status offline">📵 déconnecté</span>}
                   {entry?.status === 'free' && <span className="status free">saisie sur l’hôte</span>}
                   {entry && entry.status !== 'free' && (
-                    <button className="ghost small" onClick={() => session.release(p.id)}>
+                    <button
+                      className="ghost small"
+                      onClick={async () => {
+                        const ok = await confirm({
+                          icon: CLASSES[p.classId].emoji,
+                          title: `Libérer ${p.name} ?`,
+                          message: 'Son téléphone ne le contrôlera plus. Un autre téléphone pourra le reprendre, ou l’hôte saisira pour lui.',
+                          confirmLabel: 'Libérer',
+                        });
+                        if (ok) session.release(p.id);
+                      }}
+                    >
                       Libérer
                     </button>
                   )}
@@ -240,8 +270,16 @@ function ArchersTab({ session, onQuit }: { session: HostSession; onQuit: () => v
       </section>
       <button
         className="danger wide"
-        onClick={() => {
-          if (confirm('Abandonner cette partie ? Elle sera effacée.')) onQuit();
+        onClick={async () => {
+          const ok = await confirm({
+            tone: 'danger',
+            icon: '🥀',
+            title: 'Abandonner la partie ?',
+            message: 'La Corruption gagnera cette fois. La partie sera effacée de ce téléphone et les archers seront déconnectés.',
+            confirmLabel: 'Abandonner',
+            cancelLabel: 'Continuer le combat',
+          });
+          if (ok) onQuit();
         }}
       >
         Abandonner la partie

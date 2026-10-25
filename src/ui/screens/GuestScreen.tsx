@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { suggestion } from '../../game/advice';
 import { CLASSES } from '../../game/classes';
+import { getNemesis } from '../../game/nemesis';
 import type { ClassId } from '../../game/types';
 import type { GuestSession } from '../../net/guest';
 import { Board } from '../components/Board';
 import { ClassSheet } from '../components/ClassSheet';
 import { CopyCode } from '../components/CopyCode';
-import { EventStage } from '../components/EventStage';
+import { useConfirm } from '../components/Dialog';
+import { EventStage, useStage } from '../components/EventStage';
 import { Modal } from '../components/Modal';
+import { NemesisSheet } from '../components/NemesisSheet';
 import { Chronicle, useNarrationVoice } from '../components/Narration';
 import { PhaseGuide } from '../components/PhaseGuide';
 import { PowerPanel } from '../components/PowerPanel';
@@ -26,7 +29,10 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
   const [notice, setNotice] = useState<string | null>(null);
   const [preview, setPreview] = useState<ClassId | null>(null);
   const [welcome, setWelcome] = useState(false);
+  const [sheetView, setSheetView] = useState<'me' | 'nemesis'>('me');
   const previousYou = useRef(snap.you);
+  const confirm = useConfirm();
+  const stage = useStage(snap.state);
   useWakeLock(snap.status === 'connected');
   useNarrationVoice(snap.state?.lastEvent ?? null);
 
@@ -121,7 +127,7 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
   if (state.phase.kind === 'over') {
     return (
       <div className="screen guest">
-        <EventStage state={state} event={state.lastEvent} />
+        <EventStage state={state} event={stage.event} onClose={stage.close} />
         <EndSummary
           state={state}
           actions={
@@ -186,7 +192,7 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
 
   return (
     <div className="screen guest">
-      <EventStage state={state} event={state.lastEvent} />
+      <EventStage state={state} event={stage.event} onClose={stage.close} />
       {!connected && joinPanel}
       <header className="me" style={{ ['--class-color' as string]: cls.color }}>
         <span className="avatar big">{cls.emoji}</span>
@@ -238,15 +244,35 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
               </button>
             )}
           </PhaseGuide>
-          <Board state={state} roster={roster} you={you} onFocus={connected ? (kind, uid) => guest.focus(kind, uid) : undefined} />
+          <Board state={stage.boardState ?? state} roster={roster} you={you} onFocus={connected ? (kind, uid) => guest.focus(kind, uid) : undefined} />
           <Chronicle log={state.log} />
         </>
       )}
 
       {tab === 'fiche' && (
         <>
-          <ClassSheet classId={me.classId} />
-          <button className="ghost wide" onClick={() => guest.release()} disabled={!connected}>
+          <div className="segmented sheet-switch">
+            <button className={sheetView === 'me' ? 'selected' : ''} onClick={() => setSheetView('me')}>
+              {cls.emoji} Mon esprit
+            </button>
+            <button className={sheetView === 'nemesis' ? 'selected' : ''} onClick={() => setSheetView('nemesis')}>
+              {getNemesis(state.config.nemesisId).portrait} La Némésis
+            </button>
+          </div>
+          {sheetView === 'me' ? <ClassSheet classId={me.classId} /> : <NemesisSheet nemesisId={state.config.nemesisId} state={state} />}
+          <button
+            className="ghost wide"
+            disabled={!connected}
+            onClick={async () => {
+              const ok = await confirm({
+                icon: '🔄',
+                title: 'Changer de Gardien ?',
+                message: `Vous quitterez ${me.name}. Vous pourrez choisir un autre archer libre.`,
+                confirmLabel: 'Changer',
+              });
+              if (ok) guest.release();
+            }}
+          >
             Changer de Gardien
           </button>
         </>

@@ -106,6 +106,9 @@ export interface NemesisDef {
   id: string;
   name: string;
   title: string;
+  portrait: string;
+  lore: string;
+  tips: string[];
   intro: string;
   victory: string;
   defeat: string;

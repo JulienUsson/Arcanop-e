@@ -1,7 +1,9 @@
 import { ACTION_ICONS, ACTION_LABELS, CLASS_IDS, SPECIALTY_MULTIPLIER } from '../../game/classes';
 import { GAUGE_MAX } from '../../game/difficulty';
 import { CRIT_MULTIPLIER } from '../../game/target';
+import { MORDELUNE } from '../../game/nemesis';
 import { ClassSheet } from '../components/ClassSheet';
+import { NemesisSheet } from '../components/NemesisSheet';
 
 export function Rules({ onBack }: { onBack: () => void }) {
   return (
@@ -59,6 +61,10 @@ export function Rules({ onBack }: { onBack: () => void }) {
             <ClassSheet classId={id} />
           </div>
         ))}
+      </section>
+      <section className="panel">
+        <div className="panel-title">La Némésis</div>
+        <NemesisSheet nemesisId={MORDELUNE.id} />
       </section>
       <section className="panel">
         <div className="panel-title">Une manche</div>
