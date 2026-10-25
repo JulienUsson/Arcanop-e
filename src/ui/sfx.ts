@@ -1,6 +1,23 @@
 const KEY = 'arcanopee.sound';
 
-export type Sound = 'tap' | 'card' | 'hit' | 'heal' | 'miss' | 'kill' | 'power' | 'nemesis' | 'victory' | 'defeat' | 'send';
+export type Sound =
+  | 'tap'
+  | 'card'
+  | 'hit'
+  | 'heal'
+  | 'miss'
+  | 'kill'
+  | 'power'
+  | 'nemesis'
+  | 'victory'
+  | 'defeat'
+  | 'send'
+  | 'ready'
+  | 'whoosh'
+  | 'banner'
+  | 'combo'
+  | 'stamp'
+  | 'hurt';
 
 let ctx: AudioContext | null = null;
 
@@ -54,7 +71,7 @@ function noise(ac: AudioContext, start: number, duration: number, gain: number, 
   src.start(ac.currentTime + start);
 }
 
-export function play(sound: Sound) {
+export function play(sound: Sound, step = 0) {
   const ac = audio();
   if (!ac) return;
   switch (sound) {
@@ -95,6 +112,29 @@ export function play(sound: Sound) {
       break;
     case 'defeat':
       [392, 330, 262, 196].forEach((f, i) => tone(ac, f, i * 0.2, 0.6, 'sine', 0.1));
+      break;
+    case 'ready':
+      tone(ac, 880, 0, 0.12, 'sine', 0.08);
+      tone(ac, 1320, 0.07, 0.25, 'sine', 0.07);
+      tone(ac, 1760, 0.14, 0.35, 'sine', 0.05);
+      break;
+    case 'whoosh':
+      noise(ac, 0, 0.22, 0.09, 600, 4000);
+      break;
+    case 'banner':
+      noise(ac, 0, 0.35, 0.08, 300, 2500);
+      tone(ac, 196, 0.12, 0.6, 'triangle', 0.1);
+      tone(ac, 294, 0.12, 0.6, 'triangle', 0.06);
+      break;
+    case 'combo':
+      tone(ac, 440 * Math.pow(2, Math.min(step, 12) / 12), 0, 0.14, 'square', 0.04);
+      break;
+    case 'stamp':
+      noise(ac, 0, 0.12, 0.25, 1200, 200);
+      tone(ac, 90, 0, 0.25, 'sine', 0.3, 50);
+      break;
+    case 'hurt':
+      tone(ac, 260, 0, 0.18, 'sawtooth', 0.05, 160);
       break;
   }
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { burstAt, flash, shake, useTween } from '../fx';
+import { burstAt, flash, punch, shake, useTween } from '../fx';
+import { play } from '../sfx';
 import { Modal } from './Modal';
 import { NemesisSheet } from './NemesisSheet';
 import { TreeSheet } from './TreeSheet';
@@ -7,7 +8,7 @@ import { CLASSES } from '../../game/classes';
 import { GAUGE_MAX } from '../../game/difficulty';
 import { describeCard, nemesisActions } from '../../game/engine';
 import { getCard, getNemesis } from '../../game/nemesis';
-import type { GameState } from '../../game/types';
+import type { GameState, Player } from '../../game/types';
 import type { RosterEntry } from '../../net/protocol';
 
 interface Props {
@@ -64,13 +65,18 @@ export function HpBar({ hp, max, tone }: { hp: number; max: number; tone: 'nemes
 
 export function Gauge({ value }: { value: number }) {
   const previous = useRef(value);
+  const ref = useRef<HTMLSpanElement>(null);
   const [popped, setPopped] = useState<number | null>(null);
   useEffect(() => {
     if (value > previous.current) setPopped(value - 1);
+    if (value >= GAUGE_MAX && previous.current < GAUGE_MAX) {
+      burstAt(ref.current, 'sparks', 18);
+      play('ready');
+    }
     previous.current = value;
   }, [value]);
   return (
-    <span className={`gauge${value >= GAUGE_MAX ? ' full' : ''}`} aria-label={`Jauge ${value}/${GAUGE_MAX}`}>
+    <span ref={ref} className={`gauge${value >= GAUGE_MAX ? ' full' : ''}`} aria-label={`Jauge ${value}/${GAUGE_MAX}`}>
       {Array.from({ length: GAUGE_MAX }, (_, i) => (
         <span key={`${i}-${popped === i ? value : 0}`} className={`pip${i < value ? ' on' : ''}${popped === i ? ' pop' : ''}`} />
       ))}
@@ -126,6 +132,92 @@ const dyingRef = (el: HTMLElement | null) => {
   if (el) burstAt(el, 'smoke', 14);
 };
 
+function useArrivals(uids: string[]): (uid: string) => (el: HTMLElement | null) => void {
+  const seen = useRef(new Set(uids));
+  return (uid) => (el) => {
+    if (!el || seen.current.has(uid)) return;
+    seen.current.add(uid);
+    burstAt(el, 'shards', 18);
+    punch(el, 1.12);
+  };
+}
+
+interface Banner {
+  key: string;
+  title: string;
+  sub: string;
+  tone: 'volley' | 'nemesis' | 'fury';
+}
+
+function phaseBanner(state: GameState): Banner | null {
+  const phase = state.phase;
+  if (phase.kind === 'volley') return { key: `v${phase.volley}`, title: `Volée ${phase.volley}`, sub: 'Conseil, puis à vos arcs !', tone: 'volley' };
+  if (phase.kind === 'nemesis' && phase.drawn === 0) {
+    const name = getNemesis(state.config.nemesisId).name;
+    return state.wrathDeck.length === 0
+      ? { key: `n${state.volleyCount}`, title: 'Furie', sub: `${name} se déchaîne`, tone: 'fury' }
+      : { key: `n${state.volleyCount}`, title: 'Riposte', sub: `${name} contre-attaque`, tone: 'nemesis' };
+  }
+  return null;
+}
+
+function usePhaseBanner(state: GameState): Banner | null {
+  const next = phaseBanner(state);
+  const last = useRef(next?.key ?? null);
+  const [shown, setShown] = useState<Banner | null>(null);
+  useEffect(() => {
+    if (!next || next.key === last.current) return;
+    last.current = next.key;
+    setShown(next);
+    play('banner');
+    const timer = setTimeout(() => setShown(null), 1700);
+    return () => clearTimeout(timer);
+  }, [next?.key]);
+  return shown;
+}
+
+const ROW_SHAKE: Keyframe[] = [
+  { transform: 'translateX(0)' },
+  { transform: 'translateX(-6px)' },
+  { transform: 'translateX(5px)' },
+  { transform: 'translateX(-3px)' },
+  { transform: 'translateX(0)' },
+];
+
+function RosterRow({ player, className, children }: { player: Player; className: string; children: React.ReactNode }) {
+  const ref = useRef<HTMLLIElement>(null);
+  const previous = useRef(player.hp);
+  const [mark, setMark] = useState<{ key: number; kind: 'hurt' | 'healed'; stamp?: string } | null>(null);
+  useEffect(() => {
+    const before = previous.current;
+    previous.current = player.hp;
+    if (player.hp === before) return;
+    const key = Date.now();
+    if (player.hp < before) {
+      const down = before > 0 && player.hp === 0;
+      setMark({ key, kind: 'hurt', stamp: down ? 'À terre !' : undefined });
+      burstAt(ref.current, down ? 'smoke' : 'splinters', down ? 16 : 8);
+      if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) ref.current?.animate(ROW_SHAKE, { duration: 360, easing: 'ease-out' });
+      play('hurt');
+    } else {
+      const revived = before === 0;
+      setMark({ key, kind: 'healed', stamp: revived ? 'Relevé !' : undefined });
+      burstAt(ref.current, revived ? 'sparks' : 'leaves', revived ? 20 : 8);
+    }
+  }, [player.hp]);
+  return (
+    <li ref={ref} className={className}>
+      {children}
+      {mark && <span key={mark.key} className={`row-flash ${mark.kind}`} aria-hidden />}
+      {mark?.stamp && (
+        <span key={`s${mark.key}`} className={`row-stamp ${mark.kind}`}>
+          {mark.stamp}
+        </span>
+      )}
+    </li>
+  );
+}
+
 const STATUS_LABEL: Record<RosterEntry['status'], string> = {
   online: 'connecté',
   offline: 'déconnecté',
@@ -143,10 +235,24 @@ export function Board({ state, roster, you }: Props) {
   const roots = useGhosts(state.roots);
   const treeLow = state.tree.hp <= state.tree.maxHp * 0.3;
   const riposteCards = nemesisActions(state.config);
+  const banner = usePhaseBanner(state);
+  const arrival = useArrivals([...state.creatures, ...state.roots].map((m) => m.uid));
+  const fury = state.wrathDeck.length === 0 && state.phase.kind !== 'lobby' && state.phase.kind !== 'over';
+
+  useEffect(() => {
+    document.body.classList.toggle('fury-mode', fury);
+    return () => document.body.classList.remove('fury-mode');
+  }, [fury]);
 
   return (
     <div className="board">
       {treeLow && <div className="danger-vignette" aria-hidden />}
+      {banner && (
+        <div key={banner.key} className={`phase-banner ${banner.tone}`} aria-hidden>
+          <strong>{banner.title}</strong>
+          <small>{banner.sub}</small>
+        </div>
+      )}
       <section className={`arena${treeLow ? ' tree-low' : ''}${state.wrathDeck.length === 0 && state.phase.kind !== 'lobby' ? ' fury' : ''}`}>
         <div className="combatant tree-side">
           <Portrait kind="tree" hp={state.tree.hp} max={state.tree.maxHp} onClick={() => setTreeSheet(true)}>
@@ -204,7 +310,7 @@ export function Board({ state, roster, you }: Props) {
           {creatures.map((c) => {
             const card = getCard(state.config.nemesisId, c.cardId);
             return (
-              <div key={c.uid} ref={c.dying ? dyingRef : undefined} className={`minion creature${c.dying ? ' dying' : ''}`}>
+              <div key={c.uid} ref={c.dying ? dyingRef : arrival(c.uid)} className={`minion creature${c.dying ? ' dying' : ''}`}>
                 <div className="minion-head">{card.name}</div>
                 <HpBar hp={c.hp} max={c.maxHp} tone="creature" />
                 <small>{describeCard(card, state)}</small>
@@ -225,7 +331,7 @@ export function Board({ state, roster, you }: Props) {
             return (
               <div
                 key={r.uid}
-                ref={r.dying ? dyingRef : undefined}
+                ref={r.dying ? dyingRef : arrival(r.uid)}
                 className={`minion root${r.countdown <= riposteCards && !r.dying ? ' urgent' : ''}${r.dying ? ' dying' : ''}`}
               >
                 <span className="countdown" title="Tours de la Némésis avant éclosion">
@@ -247,7 +353,7 @@ export function Board({ state, roster, you }: Props) {
             const entry = roster.find((r) => r.playerId === p.id);
             const submitted = phase.kind === 'volley' && !!phase.submissions[p.id];
             return (
-              <li key={p.id} className={`${p.id === you ? 'you' : ''}${p.hp <= 0 ? ' down' : ''}`}>
+              <RosterRow key={p.id} player={p} className={`roster-item${p.id === you ? ' you' : ''}${p.hp <= 0 ? ' down' : ''}`}>
                 <div className="roster-row">
                   <span className="who">
                     <span className="avatar" style={{ ['--class-color' as string]: CLASSES[p.classId].color }}>
@@ -264,7 +370,7 @@ export function Board({ state, roster, you }: Props) {
                   </span>
                 </div>
                 <HpBar hp={p.hp} max={p.maxHp} tone="archer" />
-              </li>
+              </RosterRow>
             );
           })}
         </ul>
