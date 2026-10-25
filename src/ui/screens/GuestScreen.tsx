@@ -65,10 +65,16 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
 
   const joinPanel = (
     <section className="panel join">
-      {status === 'answering' && <p className="waiting">Préparation de la réponse…</p>}
+      {status === 'answering' && (
+        <>
+          <p className="waiting">Préparation de la réponse…</p>
+          <p className="hint">Autorisez la caméra : elle aide les téléphones à se trouver sur le Wi-Fi.</p>
+        </>
+      )}
       {status === 'answer' && snap.answer && (
         <>
           <p className="big-text">Montrez ce code à l’hôte pour qu’il le scanne.</p>
+          {snap.answer.hidden && <p className="warning">Ce téléphone masque son adresse sur le Wi-Fi. Autorisez la caméra pour Arcanopée dans les réglages du navigateur, sinon la connexion risque d’échouer.</p>}
           <QrCode value={snap.answer.qr} alphanumeric label="Réponse" />
           <CopyCode code={snap.answer.text} />
           <p className="waiting">En attente de l’hôte…</p>

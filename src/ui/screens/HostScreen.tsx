@@ -331,7 +331,12 @@ function InvitePanel({ session }: { session: HostSession }) {
           <p className="hint">Sert aussi à reconnecter un archer qui a perdu la connexion.</p>
         </>
       )}
-      {status === 'preparing' && <p className="waiting">Préparation de l’invitation…</p>}
+      {status === 'preparing' && (
+        <>
+          <p className="waiting">Préparation de l’invitation…</p>
+          <p className="hint">Autorisez la caméra : elle sert à scanner la réponse et aide les téléphones à se trouver sur le Wi-Fi.</p>
+        </>
+      )}
       {status === 'error' && (
         <>
           <p className="error">{snap.inviteError}</p>
@@ -347,6 +352,7 @@ function InvitePanel({ session }: { session: HostSession }) {
               <ol className="steps">
                 <li>L’archer ouvre Arcanopée, touche « Rejoindre » et scanne ce code.</li>
               </ol>
+              {snap.invite.hidden && <p className="warning">Ce téléphone masque son adresse sur le Wi-Fi. Autorisez la caméra pour Arcanopée dans les réglages du navigateur, sinon la connexion risque d’échouer.</p>}
               <QrCode value={snap.invite.qr} alphanumeric label="Invitation" />
               <CopyCode code={snap.invite.text} />
               <ol className="steps" start={2}>
