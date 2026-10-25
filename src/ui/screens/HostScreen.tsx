@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { suggestion } from '../../game/advice';
 import { ARCHER_LEVELS, CLASSES, levelText } from '../../game/classes';
 import { healOptions, nextCardLabel, targetOptions } from '../../game/engine';
@@ -33,6 +33,13 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
 
   const phase = state.phase;
   const submittedCount = phase.kind === 'volley' ? Object.keys(phase.submissions).length : 0;
+  const allSubmitted = phase.kind === 'volley' && submittedCount === state.players.length;
+
+  useEffect(() => {
+    if (!allSubmitted) return;
+    const timer = setTimeout(() => setTab('combat'), 900);
+    return () => clearTimeout(timer);
+  }, [allSubmitted]);
   const freePlayers = state.players.filter((p) => roster.find((r) => r.playerId === p.id)?.status === 'free');
   const selectedId =
     selected && state.players.some((p) => p.id === selected) ? selected : (freePlayers[0]?.id ?? state.players[0]?.id);
