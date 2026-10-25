@@ -3675,6 +3675,10 @@ button.danger-solid {
   line-height: 1.2;
 }
 
+.level-chip .level-charge {
+  color: var(--accent);
+}
+
 .level-chip.selected {
   border-color: var(--accent);
   background: rgba(217, 180, 90, 0.16);

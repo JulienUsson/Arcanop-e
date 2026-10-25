@@ -76,10 +76,10 @@ function simulate(difficulty: Difficulty, classes: ClassId[], mean: number, game
 it.skipIf(!process.env.BALANCE)('équilibrage', () => {
   const lines: string[] = [];
   for (const difficulty of ['facile', 'normal', 'difficile'] as Difficulty[]) {
-    for (const mean of [5, 6.5, 8]) lines.push(simulate(difficulty, ['loup', 'ours', 'hibou', 'cerf'], mean, 300));
-    lines.push(simulate(difficulty, ['loup', 'loup'], 6.5, 300));
-    lines.push(simulate(difficulty, ['loup', 'ours', 'cerf', 'hibou', 'loup', 'cerf'], 6.5, 300, 6));
-    lines.push(simulate(difficulty, ['hibou'], 6.5, 300));
+    for (const mean of [6.5, 8, 9]) lines.push(simulate(difficulty, ['loup', 'ours', 'hibou', 'cerf'], mean, 300));
+    lines.push(simulate(difficulty, ['loup', 'loup'], 8, 300));
+    lines.push(simulate(difficulty, ['loup', 'ours', 'cerf', 'hibou', 'loup', 'cerf'], 8, 300, 6));
+    lines.push(simulate(difficulty, ['hibou'], 8, 300));
   }
   console.log(lines.join('\n'));
 }, 120_000);

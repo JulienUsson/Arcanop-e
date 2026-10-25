@@ -34,18 +34,18 @@ Les archers sans téléphone sont saisis par l'hôte (onglet *Saisie*). L'hôte 
 Chaque archer tire ses flèches (3 par défaut) sur un blason classique, puis saisit leurs scores sur son téléphone.
 - **Niveau de l'archer** : trois niveaux seulement.
 
-  | Niveau | Cordon | Multiplicateur |
-  |---|---|---|
-  | Facile | favorable : la zone supérieure compte | ×1,2 |
-  | Normal | défavorable : la zone inférieure compte (cordon du 9 → 8) | ×1 |
-  | Difficile | défavorable | ×0,8 |
+  | Niveau | Cordon | Multiplicateur | Jauge |
+  |---|---|---|---|
+  | Facile | favorable : la zone supérieure compte | ×1,2 | 9, 10 et X |
+  | Normal | défavorable : la zone inférieure compte (cordon du 9 → 8) | ×1 | 10 et X |
+  | Difficile | défavorable | ×0,8 | 10 et X |
 
   L'écran de saisie rappelle la règle du cordon propre à l'archer.
 - **X = coup critique** : la flèche vaut 15 points au lieu de 10.
 - **Répartition des flèches** : chaque flèche est assignée à une action de l'esprit. Par exemple, sur une volée 6, 8, 9, le Loup peut envoyer le 9 sur la Némésis et le 8 et le 6 sur les racines.
 - **Puissance** : pour chaque action, somme des flèches assignées × multiplicateur de niveau. Les flèches assignées à la **spécialité** comptent ×1,5. Chaque esprit a une action absente.
 - **Arrondis** : tous les multiplicateurs (niveau, spécialité, soin, archer à terre, Meute) sont arrondis à l'entier inférieur.
-- Chaque flèche dans le jaune (9, 10 ou X) ajoute un point de jauge. À 3 points, le pouvoir de l'esprit est activable.
+- **Jauge** : un 10 ajoute un point de jauge, un X en ajoute deux ; au niveau Facile, un 9 en ajoute aussi un. À 3 points, le pouvoir de l'esprit est activable. Le 9 est réservé aux débutants pour que les pouvoirs restent rares chez les archers confirmés : à 8 de moyenne, un archer Normal charge son pouvoir toutes les trois volées environ.
 
 ### Les esprits
 
@@ -85,11 +85,11 @@ Quand la Némésis doit jouer alors que son paquet de colère est vide, elle ent
 
 | | Facile | Normal | Difficile |
 |---|---|---|---|
-| Ordre de tour par manche | 3 Volée, 1 Némésis | 3 Volée, 2 Némésis | 2 Volée, 2 Némésis |
-| PV Némésis par flèche de volée | 62 | 88 | 88 |
+| Ordre de tour par manche | 3 Volée, 2 Némésis | 3 Volée, 2 Némésis | 2 Volée, 2 Némésis |
+| PV Némésis par flèche de volée | 115 | 160 | 130 |
 | PV Arbre-Cœur | 60 | 45 | 40 |
-| Cartes de colère (niveaux 1/2/3) | 4/4/3 | 4/5/4 | 4/5/5 |
-| Multiplicateur des dégâts à l'Arbre | ×1,2 | ×1,8 | ×1,9 |
+| Cartes de colère (niveaux 1/2/3) | 4/4/2 | 3/4/3 | 4/5/5 |
+| Multiplicateur des dégâts à l'Arbre | ×1,4 | ×2,4 | ×2,2 |
 | PV de chaque Gardien | 20 | 15 | 12 |
 | Multiplicateur des dégâts aux Gardiens | ×0,75 | ×1 | ×1,25 |
 
@@ -99,7 +99,15 @@ Les PV de la Némésis sont proportionnels au nombre de flèches tirées par vol
 Le niveau de l'archer sert de handicap : un débutant en Facile (cordon favorable, ×1,2) pèse autant qu'un tireur confirmé en Difficile (×0,8), l'équipe reste mixte.
 
 ### Équilibrage
-`BALANCE=1 npx vitest run src/game/balance.test.ts` simule des centaines de parties avec des archers virtuels (score moyen 5, 6,5 ou 8, un 10 sur trois est un X) qui envoient toutes leurs flèches sur l'action la plus utile. Repères actuels pour quatre archers, une par classe, 3 flèches : Facile gagné presque toujours ; Normal ~99 % à 6,5 de moyenne et ~65 % à 5 (presque toujours après être entré en Furie finale), en 13 à 19 volées ; Difficile ~30 % à 6,5 et ~95 % à 8. La simulation compte aussi les archers mis à terre : rarement en Normal quand l'équipe soigne, 2 à 3 par partie en Difficile quand l'équipe peine. Les archers virtuels jouent de façon optimale ; une vraie équipe fait moins bien.
+`BALANCE=1 npx vitest run src/game/balance.test.ts --silent=false` simule des centaines de parties avec des archers virtuels (score moyen 6,5, 8 ou 9, un 10 sur trois est un X) qui envoient toutes leurs flèches sur l'action la plus utile. La référence est un archer à **8 de moyenne par flèche** : le jeu doit rester un défi pour lui. Repères actuels pour quatre archers, une par classe, 3 flèches, niveau Normal :
+
+| Moyenne | Facile | Normal | Difficile |
+|---|---|---|---|
+| 6,5 | ~95 % | ~0 % | ~0 % |
+| 8 | ~100 % | ~60 % | ~35 % |
+| 9 | ~100 % | ~90 % | ~85 % |
+
+Les parties durent 12 à 16 volées. En Normal à 8 de moyenne, la moitié des parties se jouent pendant la Furie finale : le paquet de colère, plus court, sert de chronomètre. Une équipe plus faible joue en Facile, ou ses archers prennent le niveau Facile (×1,2, cordon favorable, jauge dès le 9). La simulation compte aussi les archers mis à terre : rarement en Normal, 1 à 2 par partie en Difficile. Les archers virtuels jouent de façon optimale ; une vraie équipe fait moins bien.
 
 ## Architecture
 

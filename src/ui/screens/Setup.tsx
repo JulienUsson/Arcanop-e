@@ -124,6 +124,7 @@ export function Setup({ onCreate, onBack }: { onCreate: (config: GameConfig) => 
                       <small>
                         ×{String(level.coef).replace('.', ',')} · cordon {level.favorableCordon ? 'favorable' : 'défavorable'}
                       </small>
+                      <small className="level-charge">⚡ jauge dès le {level.chargeFrom}</small>
                     </button>
                   );
                 })}

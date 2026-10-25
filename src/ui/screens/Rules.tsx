@@ -21,8 +21,8 @@ export function Rules({ onBack }: { onBack: () => void }) {
         </ol>
         <ul>
           <li>
-            <strong>Niveau de l’archer</strong> : Facile (cordon favorable, ×1,2), Normal (cordon défavorable, ×1) ou Difficile (cordon
-            défavorable, ×0,8). Cordon favorable : une flèche sur la ligne entre deux zones compte pour la zone supérieure ; défavorable :
+            <strong>Niveau de l’archer</strong> : Facile (cordon favorable, ×1,2, jauge dès le 9), Normal (cordon défavorable, ×1, jauge
+            dès le 10) ou Difficile (cordon défavorable, ×0,8, jauge dès le 10). Cordon favorable : une flèche sur la ligne entre deux zones compte pour la zone supérieure ; défavorable :
             pour la zone inférieure (sur le cordon du 9 → 8).
           </li>
           <li>
@@ -32,7 +32,10 @@ export function Rules({ onBack }: { onBack: () => void }) {
             Flèches assignées à la <strong>spécialité</strong> de l’esprit : ×{String(SPECIALTY_MULTIPLIER).replace('.', ',')}. Chaque esprit
             a aussi une action absente.
           </li>
-          <li>Chaque flèche dans le jaune (9, 10 ou X) remplit la jauge. À {GAUGE_MAX}, le pouvoir de l’esprit s’active.</li>
+          <li>
+            La jauge se charge de 1 sur un 10 et de 2 sur un X ; au niveau Facile, un 9 la charge aussi de 1. À {GAUGE_MAX}, le pouvoir de l’esprit
+            s’active.
+          </li>
         </ul>
       </section>
       <section className="panel">
