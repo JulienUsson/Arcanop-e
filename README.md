@@ -33,9 +33,9 @@ Les archers sans téléphone sont saisis par l'hôte (onglet *Saisie*). L'hôte 
 ### La volée
 Chaque archer tire ses flèches (3 par défaut) sur un blason classique, puis saisit leurs scores sur son téléphone.
 - **Cordon défavorable** : une flèche qui touche la ligne entre deux zones compte pour la zone inférieure (sur le cordon du 9 → 8). L'écran de saisie le rappelle.
-- **X = coup critique** : la flèche compte double, soit 20 points.
-- **Réserve de points** : somme des flèches × coefficient de niveau, arrondie.
-- **Répartition** : l'archer distribue librement sa réserve entre les actions de son esprit. Les points placés sur la **spécialité** comptent ×1,5. Chaque esprit a une action absente.
+- **X = coup critique** : la flèche vaut 15 points au lieu de 10.
+- **Répartition des flèches** : chaque flèche est assignée à une action de l'esprit. Par exemple, sur une volée 6, 8, 9, le Loup peut envoyer le 9 sur la Némésis et le 8 et le 6 sur les racines.
+- **Puissance** : pour chaque action, somme des flèches assignées × coefficient de niveau, arrondie. Les flèches assignées à la **spécialité** comptent ×1,5. Chaque esprit a une action absente.
 - Chaque flèche dans le jaune (9, 10 ou X) ajoute un point de jauge. À 3 points, le pouvoir de l'esprit est activable.
 
 ### Les esprits
@@ -49,8 +49,8 @@ Chaque archer tire ses flèches (3 par défaut) sur un blason classique, puis sa
 
 ### Les actions
 - **Némésis** : dégâts directs.
-- **Créatures / Racines** : dégâts à la cible désignée 🎯 (touchée sur le tableau de combat par n'importe quel joueur pendant le conseil), le surplus passe aux suivantes. Sans cible en jeu, ces points frappent la Némésis : rien n'est perdu.
-- **Soin** : rend la moitié des points placés en PV à l'Arbre-Cœur.
+- **Créatures / Racines** : dégâts à la cible désignée 🎯 (touchée sur le tableau de combat par n'importe quel joueur pendant le conseil), le surplus passe aux suivantes. Sans cible en jeu, ces flèches frappent la Némésis : rien n'est perdu.
+- **Soin** : rend à l'Arbre-Cœur la moitié des points des flèches assignées.
 
 ### Une manche
 1. Le paquet d'ordre de tour est mélangé (Normal : 3 Volée, 2 Némésis).
@@ -76,7 +76,7 @@ Les PV de la Némésis sont proportionnels au nombre de flèches tirées par vol
 Le coefficient de niveau sert de handicap : un débutant (×1,3 ou ×1,5) pèse autant qu'un tireur confirmé, l'équipe reste mixte.
 
 ### Équilibrage
-`BALANCE=1 npx vitest run src/game/balance.test.ts` simule des centaines de parties avec des archers virtuels (score moyen 5, 6,5 ou 8, un 10 sur trois est un X) qui placent toute leur réserve sur l'action la plus utile. Repères actuels pour quatre archers, une par classe, 3 flèches : Facile gagné presque toujours ; Normal ~98 % à 6,5 de moyenne et ~50 % à 5, en 12 à 18 volées ; Difficile ~35 % à 6,5 et ~95 % à 8. Les archers virtuels jouent de façon optimale ; une vraie équipe fait moins bien.
+`BALANCE=1 npx vitest run src/game/balance.test.ts` simule des centaines de parties avec des archers virtuels (score moyen 5, 6,5 ou 8, un 10 sur trois est un X) qui envoient toutes leurs flèches sur l'action la plus utile. Repères actuels pour quatre archers, une par classe, 3 flèches : Facile gagné presque toujours ; Normal ~98 % à 6,5 de moyenne et ~50 % à 5, en 12 à 18 volées ; Difficile ~35 % à 6,5 et ~95 % à 8. Les archers virtuels jouent de façon optimale ; une vraie équipe fait moins bien.
 
 ## Architecture
 
@@ -110,20 +110,21 @@ src/
 ### Saisie
 La saisie se fait en deux temps, sans viser de zone sur un dessin de blason :
 1. **Scores** : un pavé de gros boutons aux couleurs des anneaux (X, 10 à 1, M). Le rappel du cordon défavorable reste affiché au-dessus. ↶ retire la dernière flèche.
-2. **Répartition** : dès la dernière flèche, l'écran affiche la réserve et la répartit par défaut sur l'action suggérée (ou la spécialité). Toucher une action y place toute la réserve ; − et + ajustent point par point (maintenir accélère), + reprend des points à l'action la mieux dotée. L'effet de chaque action (dégâts, PV) s'affiche en direct, bonus de spécialité et Hurlement de la Meute compris.
+2. **Assignation** : dès la dernière flèche, chaque flèche apparaît sur une ligne avec les actions de l'esprit ; elles sont toutes assignées d'avance à l'action suggérée (ou à la spécialité). Un toucher change l'action d'une flèche, « Tout sur » les assigne toutes d'un coup. Le total de chaque action (dégâts, PV) s'affiche en direct, bonus de spécialité et Hurlement de la Meute compris.
 
-Le moteur revalide toute saisie : scores bornés, X seulement sur un 10, points d'une action absente ignorés, points non répartis reportés sur la spécialité. Le brouillon de chaque volée survit aux changements d'onglet ; une volée envoyée reste corrigeable jusqu'à la résolution.
+Le moteur revalide toute saisie : scores bornés, X seulement sur un 10, aucune action pour une flèche hors cible, flèche assignée à une action absente renvoyée sur la spécialité. Le brouillon de chaque volée survit aux changements d'onglet ; une volée envoyée reste corrigeable jusqu'à la résolution.
 
 ### Guidage et mise en scène
 - **Étapes de volée** : l'état de jeu porte l'étape (`council`, `shoot`, `input`) ; l'hôte la fait avancer (« Au pas de tir ! », « Flèches tirées : saisie ») et les téléphones des archers basculent d'eux-mêmes sur le tableau de combat pendant le conseil, puis sur leur cible.
 - **Conseil** : `src/game/advice.ts` liste les menaces (racine sur le point d'éclore, créatures, Arbre-Cœur affaibli, pouvoirs prêts, cartes restantes) et propose à chaque archer une action, qui sert aussi de répartition par défaut. Ce ne sont que des suggestions : l'équipe décide.
-- **Scène plein écran** : chaque événement du moteur porte un type (`intro`, `volley`, `nemesis`, `resolve`, `round`, `power`, `victory`, `defeat`) et ses données (carte jouée, détail de chaque volée : scores, réserve, effets). La scène retourne la carte, égrène les volées une à une avec leurs effets et les coups critiques, puis attend un tap ; « Passer » accélère.
-- **Effets** : un calque de particules (`src/ui/fx.ts`, `FxLayer`) projette éclats violets quand la Némésis encaisse, échardes et flash rouge quand l'Arbre-Cœur est touché, feuilles pour les soins, étincelles dorées et tremblement d'écran pour un X, fumée quand une créature tombe, confettis de feuilles à la victoire, pétales noirs à la défaite. Les boutons ondulent sous le doigt, les PV défilent comme un compteur, les chiffres de dégâts jaillissent, les créatures abattues se désagrègent, la Némésis est entourée d'une couronne d'épines tournante et l'écran pulse en rouge quand l'Arbre-Cœur faiblit. Les animations respectent `prefers-reduced-motion`.
+- **Scène plein écran** : chaque événement du moteur porte un type (`intro`, `volley`, `nemesis`, `resolve`, `round`, `power`, `victory`, `defeat`) et ses données (carte jouée, détail de chaque volée : scores, action de chaque flèche, effets). La scène retourne la carte, égrène les volées une à une avec leurs effets et les coups critiques, puis attend un tap ; « Passer » accélère.
+- **Effets** : un calque de particules (`src/ui/fx.ts`, `FxLayer`) projette éclats violets quand la Némésis encaisse, échardes et flash rouge quand l'Arbre-Cœur est touché, feuilles pour les soins, étincelles dorées et tremblement d'écran pour un X, fumée quand une créature tombe, confettis de feuilles à la victoire, pétales noirs à la défaite. Les boutons ondulent sous le doigt, les PV défilent au même rythme que la barre (dont la piste découpe proprement le remplissage et la traînée de dégâts), les chiffres de dégâts jaillissent, les créatures abattues se désagrègent, la Némésis est entourée d'une couronne d'épines tournante (le portrait sépare l'animation de repos et celle d'impact pour qu'elles ne se coupent pas) et l'écran pulse en rouge quand l'Arbre-Cœur faiblit. Les animations respectent `prefers-reduced-motion`.
 - **Tableau retenu pendant la scène** : tant qu'une scène plein écran est ouverte, le tableau de combat garde l'état d'avant l'événement ; à la fermeture, il passe au nouvel état et toutes les animations (dégâts, morts, jauges) se jouent sous les yeux des joueurs.
 - **Dialogues** : aucune boîte native du navigateur ; les confirmations (résoudre sans toutes les saisies, libérer un archer, changer de Gardien, abandonner) passent par un dialogue aux couleurs du jeu.
 - **Sons** : effets synthétisés en direct (Web Audio, aucun fichier), désactivables par 🎵 ; la lecture vocale de la narration se règle par 🗣️.
 - **Fiche de la Némésis** : portrait, histoire, PV et cartes de colère restantes, cartes par manche, conseils pour la vaincre et liste complète de son paquet (niveau, PV, effet, carte déjà jouée ou en jeu). Accessible en touchant son portrait sur le tableau de combat, depuis la mise en place, l'onglet *Fiche* de l'archer et les règles.
-- **Fiche de classe** : rôle, blason annoté, spécialité, action absente, pouvoir et conseils. Accessible depuis la mise en place, le choix du Gardien, l'onglet *Fiche* de l'archer, la saisie de l'hôte et les règles.
+- **Fiche de l'Arbre-Cœur** : histoire, légende, PV, menaces en jeu, ce qui le blesse et comment le soigner. Accessible en touchant l'arbre sur le tableau de combat.
+- **Fiche de classe** : rôle, multiplicateurs par action, spécialité, action absente, pouvoir et conseils. Accessible depuis la mise en place, le choix du Gardien, l'onglet *Fiche* de l'archer, la saisie de l'hôte et les règles.
 
 ## Feuille de route
 - Mode campagne.

@@ -1,6 +1,6 @@
 import { ACTION_ICONS, ACTION_LABELS, CLASS_IDS, SPECIALTY_MULTIPLIER } from '../../game/classes';
 import { GAUGE_MAX } from '../../game/difficulty';
-import { CRIT_MULTIPLIER } from '../../game/target';
+import { CRIT_POINTS } from '../../game/target';
 import { MORDELUNE } from '../../game/nemesis';
 import { ClassSheet } from '../components/ClassSheet';
 import { NemesisSheet } from '../components/NemesisSheet';
@@ -16,10 +16,8 @@ export function Rules({ onBack }: { onBack: () => void }) {
           <li>
             Il saisit le score de chaque flèche : X, 10 à 1, ou M pour une flèche hors cible.
           </li>
-          <li>
-            L’appli additionne la volée et applique le coefficient de niveau : c’est la réserve de points.
-          </li>
-          <li>L’archer répartit librement ses points entre les actions de son esprit.</li>
+          <li>Il assigne chaque flèche à une action de son esprit : par exemple le 9 sur la Némésis, le 8 et le 6 sur les racines.</li>
+          <li>Pour chaque action, l’appli additionne ses flèches et applique le coefficient de niveau.</li>
         </ol>
         <ul>
           <li>
@@ -27,10 +25,10 @@ export function Rules({ onBack }: { onBack: () => void }) {
             cordon du 9 → 8).
           </li>
           <li>
-            <strong>X = coup critique</strong> : la flèche compte ×{CRIT_MULTIPLIER}, soit 20 points.
+            <strong>X = coup critique</strong> : la flèche vaut {CRIT_POINTS} points au lieu de 10.
           </li>
           <li>
-            Points placés sur la <strong>spécialité</strong> de l’esprit : ×{String(SPECIALTY_MULTIPLIER).replace('.', ',')}. Chaque esprit
+            Flèches assignées à la <strong>spécialité</strong> de l’esprit : ×{String(SPECIALTY_MULTIPLIER).replace('.', ',')}. Chaque esprit
             a aussi une action absente.
           </li>
           <li>Chaque flèche dans le jaune (9, 10 ou X) remplit la jauge. À {GAUGE_MAX}, le pouvoir de l’esprit s’active.</li>
@@ -49,7 +47,7 @@ export function Rules({ onBack }: { onBack: () => void }) {
             {ACTION_ICONS.roots} {ACTION_LABELS.roots} : dégâts à la racine ciblée, avant qu’elle n’éclose.
           </li>
           <li>
-            {ACTION_ICONS.heal} {ACTION_LABELS.heal} : soigne l’Arbre-Cœur (la moitié des points placés).
+            {ACTION_ICONS.heal} {ACTION_LABELS.heal} : soigne l’Arbre-Cœur (la moitié des points des flèches assignées).
           </li>
         </ul>
         <p className="hint">Sans créature ou racine en jeu, ces points frappent la Némésis.</p>
@@ -70,7 +68,7 @@ export function Rules({ onBack }: { onBack: () => void }) {
         <div className="panel-title">Une manche</div>
         <ol>
           <li>Un paquet d’ordre de tour est mélangé : des cartes Volée 🏹 et des cartes Némésis 💀.</li>
-          <li>Carte Volée : 🗣️ conseil autour du tableau de combat, 🏹 tir réel, 🎯 saisie des scores et répartition des points, ⚔️ résolution par l’hôte.</li>
+          <li>Carte Volée : 🗣️ conseil autour du tableau de combat, 🏹 tir réel, 🎯 saisie des scores et assignation des flèches, ⚔️ résolution par l’hôte.</li>
           <li>Carte Némésis : elle joue une carte de son paquet de colère (attaque, créature ou racine).</li>
           <li>Fin de manche : chaque créature agit et le compte à rebours des racines diminue.</li>
         </ol>

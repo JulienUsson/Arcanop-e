@@ -40,7 +40,7 @@ export class GuestSession {
     try {
       last = JSON.parse(localStorage.getItem(LAST_KEY) ?? 'null');
     } catch {}
-    if (last?.state?.phase.kind === 'volley' && Object.values(last.state.phase.submissions).some((sub) => Array.isArray(sub))) {
+    if (last?.state?.phase.kind === 'volley' && Object.values(last.state.phase.submissions).some((sub) => Array.isArray(sub) || 'allocation' in sub)) {
       last.state.phase.submissions = {};
     }
     if (last?.state?.lastEvent && 'hits' in last.state.lastEvent) last.state.lastEvent = null;

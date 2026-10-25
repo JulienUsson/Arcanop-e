@@ -58,7 +58,7 @@ export class HostSession {
     const { state } = saved;
     if (state.phase.kind === 'volley') {
       if (!state.phase.step) state.phase.step = 'input';
-      if (Object.values(state.phase.submissions).some((sub) => Array.isArray(sub))) state.phase.submissions = {};
+      if (Object.values(state.phase.submissions).some((sub) => Array.isArray(sub) || 'allocation' in sub)) state.phase.submissions = {};
     }
     if (state.lastEvent && (!state.lastEvent.kind || 'hits' in state.lastEvent)) state.lastEvent = null;
     state.players.forEach((p) => (p.stats.crits ??= 0));

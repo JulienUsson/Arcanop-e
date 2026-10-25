@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createGame, powerAvailability, reduce, treeDamageFactor, volleyPool } from './engine';
 import { availableActions } from './classes';
 import { GAUGE_MAX } from './difficulty';
-import type { Allocation, Arrow, GameConfig, GameState, Submission } from './types';
+import type { Action, Arrow, GameConfig, GameState, Submission } from './types';
 
 const config: GameConfig = {
   nemesisId: 'mordelune',
@@ -32,8 +32,11 @@ function drawUntil(state: GameState, kind: 'volley' | 'nemesis'): GameState {
   throw new Error('carte introuvable');
 }
 
-const arrow = (score: number | 'X'): Arrow => (score === 'X' ? { score: 10, x: true } : { score, x: false });
-const volley = (scores: (number | 'X')[], allocation: Allocation = {}): Submission => ({ arrows: scores.map(arrow), allocation });
+const arrow = (score: number | 'X', action: Action | null = null): Arrow =>
+  score === 'X' ? { score: 10, x: true, action } : { score, x: false, action: score === 0 ? null : action };
+const volley = (scores: (number | 'X')[], actions: Action | (Action | null)[] = []): Submission => ({
+  arrows: scores.map((score, i) => arrow(score, Array.isArray(actions) ? (actions[i] ?? null) : actions)),
+});
 
 describe('moteur', () => {
   it('prépare une partie mise à l’échelle', () => {
@@ -54,7 +57,7 @@ describe('moteur', () => {
   it('additionne la volée, applique la spécialité et remplit les jauges', () => {
     let s = drawUntil(started(), 'volley');
     const hp = s.nemesis.hp;
-    s = reduce(s, { type: 'submit', playerId: 'a', submission: volley([10, 9, 0], { nemesis: 19 }) });
+    s = reduce(s, { type: 'submit', playerId: 'a', submission: volley([10, 9, 0], 'nemesis') });
     s = reduce(s, { type: 'resolve' });
     expect(s.phase.kind).toBe('turn');
     expect(s.nemesis.hp).toBe(hp - 29);
@@ -66,8 +69,8 @@ describe('moteur', () => {
   });
 
   it('compte le X comme un coup critique', () => {
-    expect(volleyPool([arrow('X'), arrow(7)], 1)).toBe(27);
-    expect(volleyPool([arrow('X'), arrow(7)], 1.5)).toBe(41);
+    expect(volleyPool([arrow('X'), arrow(7)], 1)).toBe(22);
+    expect(volleyPool([arrow('X'), arrow(7)], 1.5)).toBe(33);
     let s = drawUntil(started(), 'volley');
     s = reduce(s, { type: 'submit', playerId: 'a', submission: volley(['X', 7, 3]) });
     s = reduce(s, { type: 'resolve' });
@@ -76,24 +79,24 @@ describe('moteur', () => {
     expect(s.lastEvent?.narration).toContain('coup critique');
   });
 
-  it('répartit les points entre les actions disponibles', () => {
+  it('répartit les flèches entre les actions disponibles', () => {
     let s = drawUntil(started(), 'volley');
     s = { ...s, tree: { hp: 20, maxHp: 45 } };
     const hp = s.nemesis.hp;
-    s = reduce(s, { type: 'submit', playerId: 'b', submission: volley([8, 8], { nemesis: 6, heal: 10, roots: 5 }) });
-    expect(s.phase.kind === 'volley' && s.phase.submissions.b.allocation).toEqual({ nemesis: 6, heal: 10 });
+    s = reduce(s, { type: 'submit', playerId: 'b', submission: volley([8, 8, 5], ['nemesis', 'heal', 'roots']) });
+    expect(s.phase.kind === 'volley' && s.phase.submissions.b.arrows.map((a) => a.action)).toEqual(['nemesis', 'heal', 'creatures']);
     s = reduce(s, { type: 'resolve' });
-    expect(s.nemesis.hp).toBe(hp - 6);
-    expect(s.tree.hp).toBe(25);
+    expect(s.tree.hp).toBe(24);
+    expect(s.nemesis.hp).toBe(hp - 8 - 8);
   });
 
-  it('reporte les points non répartis sur la spécialité', () => {
+  it('ne donne aucune action à une flèche hors cible', () => {
     let s = drawUntil(started(), 'volley');
-    const hp = s.nemesis.hp;
-    s = reduce(s, { type: 'submit', playerId: 'a', submission: volley([5, 5], { creatures: 4 }) });
-    expect(s.phase.kind === 'volley' && s.phase.submissions.a.allocation).toEqual({ creatures: 4, nemesis: 6 });
-    s = reduce(s, { type: 'resolve' });
-    expect(s.nemesis.hp).toBe(hp - 4 - 9);
+    s = reduce(s, { type: 'submit', playerId: 'a', submission: { arrows: [{ score: 0, x: true, action: 'nemesis' }, { score: 7, x: true, action: null }] } });
+    expect(s.phase.kind === 'volley' && s.phase.submissions.a.arrows).toEqual([
+      { score: 0, x: false, action: null },
+      { score: 7, x: false, action: 'nemesis' },
+    ]);
   });
 
   it('guide la volée du conseil à la saisie', () => {
@@ -109,13 +112,13 @@ describe('moteur', () => {
 
   it('détaille chaque volée dans l’événement de résolution', () => {
     let s = drawUntil(started(), 'volley');
-    s = reduce(s, { type: 'submit', playerId: 'a', submission: volley([9, 0], { nemesis: 9 }) });
+    s = reduce(s, { type: 'submit', playerId: 'a', submission: volley([9, 0], 'nemesis') });
     s = reduce(s, { type: 'resolve' });
     expect(s.lastEvent?.kind).toBe('resolve');
     expect(s.lastEvent?.results).toEqual([
       {
         playerId: 'a',
-        arrows: [arrow(9), arrow(0)],
+        arrows: [arrow(9, 'nemesis'), arrow(0)],
         pool: 9,
         effects: [{ action: 'nemesis', points: 9, amount: 14, target: 'Mordelune' }],
       },
@@ -125,7 +128,7 @@ describe('moteur', () => {
   it('applique le coefficient et le facteur de soin', () => {
     let s = drawUntil(started(), 'volley');
     s = { ...s, tree: { hp: 10, maxHp: 45 } };
-    s = reduce(s, { type: 'submit', playerId: 'd', submission: volley([8], { heal: 12 }) });
+    s = reduce(s, { type: 'submit', playerId: 'd', submission: volley([8], 'heal') });
     s = reduce(s, { type: 'resolve' });
     expect(s.tree.hp).toBe(19);
   });
@@ -133,7 +136,7 @@ describe('moteur', () => {
   it('redirige vers la Némésis faute de créature', () => {
     let s = drawUntil(started(), 'volley');
     const hp = s.nemesis.hp;
-    s = reduce(s, { type: 'submit', playerId: 'b', submission: volley([7], { creatures: 7 }) });
+    s = reduce(s, { type: 'submit', playerId: 'b', submission: volley([7], 'creatures') });
     s = reduce(s, { type: 'resolve' });
     expect(s.nemesis.hp).toBe(hp - 11);
   });
@@ -146,7 +149,7 @@ describe('moteur', () => {
       { uid: 'c2', cardId: 'corbeau-cendre', hp: 12, maxHp: 12 },
     ];
     s = reduce(s, { type: 'focus', kind: 'creature', uid: 'c2' });
-    s = reduce(s, { type: 'submit', playerId: 'b', submission: volley([6, 4], { creatures: 10 }) });
+    s = reduce(s, { type: 'submit', playerId: 'b', submission: volley([6, 4], 'creatures') });
     s = reduce(s, { type: 'resolve' });
     expect(s.creatures).toEqual([{ uid: 'c1', cardId: 'loup-ronce', hp: 2, maxHp: 18 }]);
   });
@@ -168,7 +171,7 @@ describe('moteur', () => {
     s = reduce(s, { type: 'power', playerId: 'd' });
     expect(s.tree.hp).toBe(35);
     const hp = s.nemesis.hp;
-    s = reduce(s, { type: 'submit', playerId: 'a', submission: volley([8], { nemesis: 8 }) });
+    s = reduce(s, { type: 'submit', playerId: 'a', submission: volley([8], 'nemesis') });
     s = reduce(s, { type: 'resolve' });
     expect(s.nemesis.hp).toBe(hp - 24);
     expect(s.wolfBoost).toBe(0);
@@ -221,7 +224,7 @@ describe('moteur', () => {
           for (const p of s.players) {
             const actions = availableActions(p.classId);
             const scores = [0, 1, 2].map((i) => ((seed * 7 + i * 3) % 11) as number);
-            s = reduce(s, { type: 'submit', playerId: p.id, submission: volley(scores, { [actions[seed % 3]]: 10 }) });
+            s = reduce(s, { type: 'submit', playerId: p.id, submission: volley(scores, scores.map((_, i) => actions[(seed + i) % actions.length])) });
           }
           s = reduce(s, { type: 'resolve' });
         }

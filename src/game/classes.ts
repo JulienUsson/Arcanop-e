@@ -45,7 +45,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     role: 'Attaquant',
     lore: 'Le Loup ne lâche jamais sa proie. Sa meute invisible court avec chaque flèche vers le cœur de la Corruption.',
     tips: [
-      'Vos points placés sur la Némésis comptent ×1,5 : c’est vous qui la faites tomber.',
+      'Vos flèches assignées à la Némésis comptent ×1,5 : c’est vous qui la faites tomber.',
       'Gardez votre pouvoir pour une volée où toute l’équipe vise la Némésis.',
       'Pas d’action Soin : laissez l’Arbre-Cœur au Cerf et à l’Ours.',
     ],
@@ -65,7 +65,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     lore: 'L’Ours se dresse entre la forêt et ses ennemis. Rien ne passe tant qu’il tient debout.',
     tips: [
       'Votre spécialité : éliminer les créatures avant qu’elles n’agissent en fin de manche.',
-      'Quelques points en Soin dépannent l’Arbre-Cœur quand le Cerf ne suffit plus.',
+      'Une flèche en Soin dépanne l’Arbre-Cœur quand le Cerf ne suffit plus.',
       'Votre pouvoir gagne une manche sur une racine prête à éclore.',
       'Pas d’action Racines : le Hibou s’en charge.',
     ],
@@ -103,8 +103,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     role: 'Soigneur',
     lore: 'Le Cerf porte la sève de la forêt. Là où il passe, l’écorce se referme et les feuilles repoussent.',
     tips: [
-      'Votre spécialité : maintenir l’Arbre-Cœur en vie. Vos points en Soin comptent ×1,5 avant d’être divisés par deux.',
-      'Quand l’Arbre est en forme, placez vos points sur la Némésis ou les racines.',
+      'Votre spécialité : maintenir l’Arbre-Cœur en vie. Vos flèches en Soin comptent ×1,5 avant d’être divisées par deux.',
+      'Quand l’Arbre est en forme, envoyez vos flèches sur la Némésis ou les racines.',
       'Votre pouvoir rend 15 PV d’un coup : gardez-le pour une attaque lourde.',
       'Pas d’action Créatures : l’Ours et le Loup s’en occupent.',
     ],

@@ -1,6 +1,6 @@
 import { ACTION_ICONS, ACTION_LABELS, actionMultiplier, CLASSES } from '../../game/classes';
 import { CERF_HEAL, GAUGE_MAX } from '../../game/difficulty';
-import { CRIT_MULTIPLIER } from '../../game/target';
+import { CRIT_POINTS } from '../../game/target';
 import type { Action, ClassId } from '../../game/types';
 
 const ALL_ACTIONS: Action[] = ['nemesis', 'creatures', 'roots', 'heal'];
@@ -9,7 +9,7 @@ const ACTION_HELP: Record<Action, string> = {
   nemesis: 'Dégâts directs à la Némésis.',
   creatures: 'Dégâts à la créature ciblée 🎯, le surplus passe à la suivante.',
   roots: 'Dégâts à la racine ciblée, avant qu’elle n’éclose.',
-  heal: 'Rend à l’Arbre-Cœur la moitié des points placés.',
+  heal: 'Rend à l’Arbre-Cœur la moitié des points des flèches assignées.',
 };
 
 export function ClassSheet({ classId }: { classId: ClassId }) {
@@ -44,8 +44,8 @@ export function ClassSheet({ classId }: { classId: ClassId }) {
           ))}
         </ul>
         <p className="hint">
-          Après chaque volée, additionnez vos flèches (un X compte ×{CRIT_MULTIPLIER}), appliquez votre coefficient, puis répartissez
-          les points entre vos actions. Les points placés sur la spécialité comptent ×1,5. Cordon défavorable : une flèche sur la ligne
+          Après chaque volée, assignez chacune de vos flèches à une action (un X vaut {CRIT_POINTS} points). Les flèches assignées à la
+          spécialité comptent ×1,5. Cordon défavorable : une flèche sur la ligne
           compte pour la zone inférieure.
         </p>
       </section>

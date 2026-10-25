@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { burstAt, flash, shake, useTween } from '../fx';
 import { Modal } from './Modal';
 import { NemesisSheet } from './NemesisSheet';
+import { TreeSheet } from './TreeSheet';
 import { CLASSES } from '../../game/classes';
 import { GAUGE_MAX } from '../../game/difficulty';
 import { describeCard } from '../../game/engine';
@@ -42,12 +43,12 @@ function useDelta(value: number, max: number): { floaters: Floater[]; pulse: 'up
 export function HpBar({ hp, max, tone }: { hp: number; max: number; tone: 'nemesis' | 'tree' | 'creature' | 'root' }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (hp / max) * 100)) : 0;
   const { floaters, pulse, pulseKey } = useDelta(hp, max);
-  const shown = useTween(hp, 900);
+  const shown = useTween(hp, 450);
   return (
     <div className={`hp-bar ${tone}${pct <= 25 ? ' low' : ''}`}>
-      <div className="hp-ghost" style={{ width: `${pct}%` }} />
-      <div className="hp-fill" style={{ width: `${pct}%` }}>
-        <span className="hp-shine" />
+      <div className="hp-track">
+        <div className="hp-ghost" style={{ width: `${pct}%` }} />
+        <div className="hp-fill" style={{ width: `${pct}%` }} />
       </div>
       {pulse && <div key={pulseKey} className={`hp-pulse ${pulse}`} />}
       <span className="hp-text">
@@ -98,8 +99,12 @@ function Portrait({ kind, hp, max, onClick, children }: { kind: 'nemesis' | 'tre
     }
   }, [pulseKey]);
   return (
-    <button ref={ref} key={pulseKey} className={`portrait ${kind}${pulse ? ` hit-${pulse}` : ''}`} onClick={onClick} disabled={!onClick} aria-label={kind === 'nemesis' ? 'Fiche de la Némésis' : 'Arbre-Cœur'}>
-      <span className="portrait-face">{children}</span>
+    <button ref={ref} className={`portrait ${kind}`} onClick={onClick} disabled={!onClick} aria-label={kind === 'nemesis' ? 'Fiche de la Némésis' : 'Fiche de l’Arbre-Cœur'}>
+      <span className="portrait-orb">
+        <span key={pulseKey} className={`portrait-hit${pulse ? ` hit-${pulse}` : ''}`}>
+          <span className="portrait-face">{children}</span>
+        </span>
+      </span>
     </button>
   );
 }
@@ -134,6 +139,7 @@ export function Board({ state, roster, you, onFocus }: Props) {
   const phase = state.phase;
   const revealedCard = state.revealed && state.wrathDeck[0] ? getCard(state.config.nemesisId, state.wrathDeck[0]) : null;
   const [nemesisSheet, setNemesisSheet] = useState(false);
+  const [treeSheet, setTreeSheet] = useState(false);
   const creatures = useGhosts(state.creatures);
   const roots = useGhosts(state.roots);
   const treeLow = state.tree.hp <= state.tree.maxHp * 0.3;
@@ -143,10 +149,12 @@ export function Board({ state, roster, you, onFocus }: Props) {
       {treeLow && <div className="danger-vignette" aria-hidden />}
       <section className={`arena${treeLow ? ' tree-low' : ''}`}>
         <div className="combatant tree-side">
-          <Portrait kind="tree" hp={state.tree.hp} max={state.tree.maxHp}>
+          <Portrait kind="tree" hp={state.tree.hp} max={state.tree.maxHp} onClick={() => setTreeSheet(true)}>
             🌳
           </Portrait>
-          <div className="combatant-name">Arbre-Cœur</div>
+          <button className="combatant-name link-name" onClick={() => setTreeSheet(true)}>
+            Arbre-Cœur <small>📜</small>
+          </button>
           <HpBar hp={state.tree.hp} max={state.tree.maxHp} tone="tree" />
         </div>
         <div className="versus">VS</div>
@@ -267,6 +275,11 @@ export function Board({ state, roster, you, onFocus }: Props) {
           })}
         </ul>
       </section>
+      {treeSheet && (
+        <Modal label="Fiche de l’Arbre-Cœur" onClose={() => setTreeSheet(false)}>
+          <TreeSheet state={state} />
+        </Modal>
+      )}
       {nemesisSheet && (
         <Modal label="Fiche de la Némésis" onClose={() => setNemesisSheet(false)}>
           <NemesisSheet nemesisId={state.config.nemesisId} state={state} />
