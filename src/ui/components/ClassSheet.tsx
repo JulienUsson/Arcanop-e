@@ -1,7 +1,8 @@
 import { ACTION_ICONS, ACTION_LABELS, actionMultiplier, CLASSES } from '../../game/classes';
-import { CERF_ARCHER_HEAL, CERF_HEAL, GAUGE_MAX } from '../../game/difficulty';
+import { CERF_ARCHER_HEAL, CERF_HEAL } from '../../game/difficulty';
+import { cerfHeal, gaugeMax } from '../../game/engine';
 import { CRIT_POINTS } from '../../game/target';
-import type { Action, ClassId } from '../../game/types';
+import type { Action, ClassId, GameConfig } from '../../game/types';
 
 const ALL_ACTIONS: Action[] = ['nemesis', 'creatures', 'roots', 'heal'];
 
@@ -12,8 +13,9 @@ const ACTION_HELP: Record<Action, string> = {
   heal: 'Rend la moitié des points des flèches à l’Arbre-Cœur ou à un Gardien.',
 };
 
-export function ClassSheet({ classId }: { classId: ClassId }) {
+export function ClassSheet({ classId, config }: { classId: ClassId; config?: GameConfig }) {
   const cls = CLASSES[classId];
+  const treeHeal = config ? cerfHeal(config) : CERF_HEAL;
   const rows = ALL_ACTIONS.map((action) => ({ action, multiplier: actionMultiplier(classId, action) }));
 
   return (
@@ -55,10 +57,11 @@ export function ClassSheet({ classId }: { classId: ClassId }) {
           Pouvoir : {cls.powerName}
         </h3>
         <p>
-          {classId === 'cerf' ? `Soigne l’Arbre-Cœur de ${CERF_HEAL} PV et chaque Gardien de ${CERF_ARCHER_HEAL} PV.` : cls.powerText}
+          {classId === 'cerf' ? `Soigne l’Arbre-Cœur de ${treeHeal} PV et chaque Gardien de ${CERF_ARCHER_HEAL} PV.` : cls.powerText}
         </p>
         <p className="hint">
-          Jauge de {GAUGE_MAX} : un 10 la charge de 1, un X de 2 ; au niveau Facile, un 9 la charge aussi de 1. Le pouvoir s’active quand vous le décidez.
+          {config ? `Jauge de ${gaugeMax(config)} cases` : 'Jauge d’autant de cases que de flèches par volée'} : un 10 la charge de 1, un X de 2 ; au niveau
+          Facile, un 9 la charge aussi de 1. Le pouvoir s’active quand vous le décidez.
         </p>
       </section>
 

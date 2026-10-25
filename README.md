@@ -45,7 +45,7 @@ Chaque archer tire ses flèches (3 par défaut) sur un blason classique, puis sa
 - **Répartition des flèches** : chaque flèche est assignée à une action de l'esprit. Par exemple, sur une volée 6, 8, 9, le Loup peut envoyer le 9 sur la Némésis et le 8 et le 6 sur les racines.
 - **Puissance** : pour chaque action, somme des flèches assignées × multiplicateur de niveau. Les flèches assignées à la **spécialité** comptent ×1,5. Chaque esprit a une action absente.
 - **Arrondis** : tous les multiplicateurs (niveau, spécialité, soin, archer à terre, Meute) sont arrondis à l'entier inférieur.
-- **Jauge** : un 10 ajoute un point de jauge, un X en ajoute deux ; au niveau Facile, un 9 en ajoute aussi un. À 3 points, le pouvoir de l'esprit est activable. Le 9 est réservé aux débutants pour que les pouvoirs restent rares chez les archers confirmés : à 8 de moyenne, un archer Normal charge son pouvoir toutes les trois volées environ.
+- **Jauge** : un 10 ajoute un point de jauge, un X en ajoute deux ; au niveau Facile, un 9 en ajoute aussi un. La jauge a autant de cases que de flèches par volée (3 en 3 flèches, 6 en 6 flèches) ; pleine, le pouvoir de l'esprit est activable. Le 9 est réservé aux débutants pour que les pouvoirs restent rares chez les archers confirmés : à 8 de moyenne, un archer Normal charge son pouvoir toutes les trois volées environ.
 
 ### Les esprits
 
@@ -94,7 +94,17 @@ Quand la Némésis doit jouer alors que son paquet de colère est vide, elle ent
 | Multiplicateur des dégâts aux Gardiens | ×0,75 | ×1 | ×1,25 |
 
 ### Mise à l'échelle
-Les PV de la Némésis sont proportionnels au nombre de flèches tirées par volée (archers × flèches). Les PV des créatures et racines, et les soins de la Corruption, suivent le facteur `flèches / 12` (minimum 0,4). Les dégâts à l'Arbre-Cœur suivent `0,5 + 0,5 × facteur`, borné entre 0,6 et 1,5, pour qu'une petite équipe, qui soigne moins, ne soit pas écrasée.
+La partie s'adapte au nombre d'archers et de flèches par volée, pour qu'une équipe à 8 de moyenne ait les mêmes chances quelle que soit sa taille.
+- **Némésis** : PV proportionnels au nombre de flèches tirées par volée (archers × flèches), corrigés selon la taille de l'équipe :
+
+  | Archers | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+  |---|---|---|---|---|---|---|---|---|
+  | Correction | ×0,5 | ×0,72 | ×0,87 | ×1 | ×1,06 | ×1,14 | ×1,21 | ×1,29 |
+
+  Une petite équipe ne couvre pas tous les rôles (un Loup seul ne soigne pas) et doit disperser ses flèches sur autant de créatures et de racines qu'une grande. Une grande équipe profite d'un Hurlement de la Meute qui double les dégâts de tout le monde et de plus de pouvoirs par volée.
+- **Créatures, racines, soins de la Corruption** : facteur `flèches / 12` (minimum 0,4).
+- **Arbre-Cœur** : ses PV, les dégâts qu'il subit et le soin du Bramement de la Sève suivent `0,5 + 0,5 × facteur`, borné entre 0,6 et 1,5. Une petite équipe, qui soigne moins, n'est pas écrasée, et un gros coup pèse autant sur l'Arbre quelle que soit la taille de la partie.
+- **Jauge** : autant de cases que de flèches par volée, pour que les pouvoirs reviennent au même rythme en 3 ou en 6 flèches.
 
 Le niveau de l'archer sert de handicap : un débutant en Facile (cordon favorable, ×1,2) pèse autant qu'un tireur confirmé en Difficile (×0,8), l'équipe reste mixte.
 
@@ -106,6 +116,8 @@ Le niveau de l'archer sert de handicap : un débutant en Facile (cordon favorabl
 | 6,5 | ~95 % | ~0 % | ~0 % |
 | 8 | ~100 % | ~60 % | ~35 % |
 | 9 | ~100 % | ~90 % | ~85 % |
+
+À 8 de moyenne, la simulation fait aussi varier la taille de l'équipe (de 1 à 8 archers, chaque classe représentée avant d'en doubler une, moyenne sur toutes les compositions) en 3 et 6 flèches : Normal reste entre 55 et 65 % de victoires, Difficile entre 25 et 45 % (plus dur en solo, ~60 % à 8 archers en 6 flèches), Facile toujours gagné.
 
 Les parties durent 12 à 16 volées. En Normal à 8 de moyenne, la moitié des parties se jouent pendant la Furie finale : le paquet de colère, plus court, sert de chronomètre. Une équipe plus faible joue en Facile, ou ses archers prennent le niveau Facile (×1,2, cordon favorable, jauge dès le 9). La simulation compte aussi les archers mis à terre : rarement en Normal, 1 à 2 par partie en Difficile. Les archers virtuels jouent de façon optimale ; une vraie équipe fait moins bien.
 

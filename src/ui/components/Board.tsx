@@ -4,8 +4,7 @@ import { Modal } from './Modal';
 import { NemesisSheet } from './NemesisSheet';
 import { TreeSheet } from './TreeSheet';
 import { CLASSES } from '../../game/classes';
-import { GAUGE_MAX } from '../../game/difficulty';
-import { describeCard } from '../../game/engine';
+import { describeCard, gaugeMax } from '../../game/engine';
 import { getCard, getNemesis } from '../../game/nemesis';
 import type { GameState } from '../../game/types';
 import type { RosterEntry } from '../../net/protocol';
@@ -62,7 +61,7 @@ export function HpBar({ hp, max, tone }: { hp: number; max: number; tone: 'nemes
   );
 }
 
-export function Gauge({ value }: { value: number }) {
+export function Gauge({ value, max }: { value: number; max: number }) {
   const previous = useRef(value);
   const [popped, setPopped] = useState<number | null>(null);
   useEffect(() => {
@@ -70,8 +69,8 @@ export function Gauge({ value }: { value: number }) {
     previous.current = value;
   }, [value]);
   return (
-    <span className={`gauge${value >= GAUGE_MAX ? ' full' : ''}`} aria-label={`Jauge ${value}/${GAUGE_MAX}`}>
-      {Array.from({ length: GAUGE_MAX }, (_, i) => (
+    <span className={`gauge${value >= max ? ' full' : ''}`} aria-label={`Jauge ${value}/${max}`}>
+      {Array.from({ length: max }, (_, i) => (
         <span key={`${i}-${popped === i ? value : 0}`} className={`pip${i < value ? ' on' : ''}${popped === i ? ' pop' : ''}`} />
       ))}
     </span>
@@ -265,7 +264,7 @@ export function Board({ state, roster, you }: Props) {
                   </span>
                   <span className="right">
                     {phase.kind === 'volley' && <span className={`submitted${submitted ? ' yes' : ''}`}>{submitted ? '✓' : '…'}</span>}
-                    <Gauge value={p.gauge} />
+                    <Gauge value={p.gauge} max={gaugeMax(state.config)} />
                   </span>
                 </div>
                 <HpBar hp={p.hp} max={p.maxHp} tone="archer" />

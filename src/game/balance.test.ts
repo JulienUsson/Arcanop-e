@@ -73,13 +73,30 @@ function simulate(difficulty: Difficulty, classes: ClassId[], mean: number, game
   return `${difficulty.padEnd(9)} ${classes.join(',').padEnd(34)} moy ${mean} × ${arrows} : ${rate}% victoires, ${deckOuts} en Furie, ${(volleys / games).toFixed(1)} volées, ${(knockouts / games).toFixed(1)} archers à terre`;
 }
 
+const CLASS_IDS: ClassId[] = ['loup', 'ours', 'hibou', 'cerf'];
+
+function subsets(k: number, start = 0): ClassId[][] {
+  if (k === 0) return [[]];
+  return CLASS_IDS.slice(start).flatMap((c, i) => subsets(k - 1, start + i + 1).map((rest) => [c, ...rest]));
+}
+
+function teams(size: number): ClassId[][] {
+  return size <= 4 ? subsets(size) : subsets(size - 4).map((extra) => [...CLASS_IDS, ...extra]);
+}
+
+function bySize(difficulty: Difficulty, arrows: number): string {
+  const cells = [1, 2, 3, 4, 5, 6, 8].map((size) => {
+    const rates = teams(size).map((team) => Number(simulate(difficulty, team, 8, 40, arrows).match(/: (\d+)% victoires/)![1]));
+    return `${size}j ${String(Math.round(rates.reduce((a, b) => a + b, 0) / rates.length)).padStart(3)}%`;
+  });
+  return `${difficulty.padEnd(9)} moy 8 × ${arrows} selon l’équipe : ${cells.join(' · ')}`;
+}
+
 it.skipIf(!process.env.BALANCE)('équilibrage', () => {
   const lines: string[] = [];
   for (const difficulty of ['facile', 'normal', 'difficile'] as Difficulty[]) {
-    for (const mean of [6.5, 8, 9]) lines.push(simulate(difficulty, ['loup', 'ours', 'hibou', 'cerf'], mean, 300));
-    lines.push(simulate(difficulty, ['loup', 'loup'], 8, 300));
-    lines.push(simulate(difficulty, ['loup', 'ours', 'cerf', 'hibou', 'loup', 'cerf'], 8, 300, 6));
-    lines.push(simulate(difficulty, ['hibou'], 8, 300));
+    for (const mean of [6.5, 8, 9]) lines.push(simulate(difficulty, CLASS_IDS, mean, 300));
+    for (const arrows of [3, 6]) lines.push(bySize(difficulty, arrows));
   }
   console.log(lines.join('\n'));
-}, 120_000);
+}, 600_000);

@@ -7,9 +7,9 @@ import {
   FURY_ARCHERS_STEP,
   FURY_TREE_BASE,
   FURY_TREE_STEP,
-  GAUGE_MAX,
   HEAL_FACTOR,
   REFERENCE_ARROWS,
+  TEAM_HP_FACTORS,
   WEAKENED_FACTOR,
 } from './difficulty';
 import { getCard, getNemesis, ROUND_NARRATIONS, VOLLEY_NARRATIONS } from './nemesis';
@@ -66,6 +66,10 @@ export function arrowSlots(config: GameConfig): number {
   return Math.max(1, config.players.length * config.arrowsPerVolley);
 }
 
+export function teamHpFactor(config: GameConfig): number {
+  return TEAM_HP_FACTORS[Math.min(config.players.length, TEAM_HP_FACTORS.length - 1)];
+}
+
 export function scaleFactor(config: GameConfig): number {
   return Math.max(0.4, arrowSlots(config) / REFERENCE_ARROWS);
 }
@@ -74,9 +78,24 @@ function scaled(state: GameState, amount: number): number {
   return Math.max(1, Math.floor(amount * scaleFactor(state.config)));
 }
 
+export function gaugeMax(config: GameConfig): number {
+  return config.arrowsPerVolley;
+}
+
+export function treeScale(config: GameConfig): number {
+  return Math.min(1.5, Math.max(0.6, 0.5 + 0.5 * scaleFactor(config)));
+}
+
+export function treeMaxHp(config: GameConfig): number {
+  return Math.round(DIFFICULTIES[config.difficulty].treeHp * treeScale(config));
+}
+
 export function treeDamageFactor(config: GameConfig): number {
-  const team = Math.min(1.5, Math.max(0.6, 0.5 + 0.5 * scaleFactor(config)));
-  return team * DIFFICULTIES[config.difficulty].treeDamage;
+  return treeScale(config) * DIFFICULTIES[config.difficulty].treeDamage;
+}
+
+export function cerfHeal(config: GameConfig): number {
+  return Math.floor(CERF_HEAL * treeScale(config));
 }
 
 function treeDamage(state: GameState, amount: number): number {
@@ -118,7 +137,7 @@ export function createGame(config: GameConfig, seed: number, gameId: string): Ga
     rng = next;
     wrathDeck.push(...shuffled.slice(0, count));
   });
-  const nemesisHp = Math.floor(diff.nemesisHpPerArrow * arrowSlots(config));
+  const nemesisHp = Math.floor(diff.nemesisHpPerArrow * arrowSlots(config) * teamHpFactor(config));
   const players: Player[] = config.players.map((p) => ({ ...p, hp: diff.archerHp, maxHp: diff.archerHp, gauge: 0, stats: emptyStats() }));
   return {
     gameId,
@@ -128,7 +147,7 @@ export function createGame(config: GameConfig, seed: number, gameId: string): Ga
     volleyCount: 0,
     phase: { kind: 'lobby' },
     nemesis: { hp: nemesisHp, maxHp: nemesisHp },
-    tree: { hp: diff.treeHp, maxHp: diff.treeHp },
+    tree: { hp: treeMaxHp(config), maxHp: treeMaxHp(config) },
     players,
     creatures: [],
     roots: [],
@@ -687,7 +706,7 @@ function resolve(state: GameState): GameState {
       if (arrow.score === 10) player.stats.tens += 1;
       if (arrow.x) player.stats.crits += 1;
       if (isYellow(arrow.score)) player.stats.yellows += 1;
-      player.gauge = Math.min(GAUGE_MAX, player.gauge + gaugeCharge(arrow, player.level));
+      player.gauge = Math.min(gaugeMax(s.config), player.gauge + gaugeCharge(arrow, player.level));
     }
     const pool = volleyPool(arrows, player.coef);
     const weakened = isDown(player);
@@ -758,7 +777,7 @@ export function powerAvailability(state: GameState, playerId: string): { ok: boo
   const player = state.players.find((p) => p.id === playerId);
   if (!player) return { ok: false, reason: 'Archer inconnu' };
   if (state.phase.kind === 'lobby' || state.phase.kind === 'over') return { ok: false, reason: 'Partie non en cours' };
-  if (player.gauge < GAUGE_MAX) return { ok: false, reason: `Jauge ${player.gauge}/${GAUGE_MAX}` };
+  if (player.gauge < gaugeMax(state.config)) return { ok: false, reason: `Jauge ${player.gauge}/${gaugeMax(state.config)}` };
   switch (player.classId) {
     case 'loup':
       return state.wolfBoost > 0 ? { ok: false, reason: 'La Meute chasse déjà' } : { ok: true };
@@ -803,7 +822,7 @@ function usePower(state: GameState, playerId: string, targetUid?: string): GameS
       break;
     case 'cerf': {
       const archerHeal = Math.floor(CERF_ARCHER_HEAL * factor);
-      const heal = Math.min(Math.floor(CERF_HEAL * factor), s.tree.maxHp - s.tree.hp);
+      const heal = Math.min(Math.floor(cerfHeal(s.config) * factor), s.tree.maxHp - s.tree.hp);
       s.tree.hp += heal;
       const archers = s.players.reduce((sum, p) => sum + healArcher(ctx, p, archerHeal), 0);
       player.stats.healing += heal + archers;
