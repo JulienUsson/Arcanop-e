@@ -103,10 +103,21 @@ function describe(signal: SignalData): string {
   return parts.join(', ') || 'aucune';
 }
 
+function sharedNetwork(offer: SignalData, answer: SignalData): string | null {
+  const prefixes = (signal: SignalData) =>
+    signal.candidates.filter((c) => c.type === 'host' && IPV4.test(c.address)).map((c) => c.address.split('.').slice(0, 3).join('.'));
+  const theirs = new Set(prefixes(answer));
+  const shared = prefixes(offer).find((p) => theirs.has(p));
+  return shared ? `${shared}.x` : null;
+}
+
 export function connectionFailure(offer: SignalData, answer: SignalData): string {
+  const network = sharedNetwork(offer, answer);
   const advice =
     hidesAddress(offer) || hidesAddress(answer)
       ? 'Un des téléphones masque son adresse sur le Wi-Fi : autorisez la caméra pour Arcanopée sur les deux téléphones, puis refaites une invitation.'
-      : 'Le Wi-Fi isole peut-être les appareils (fréquent sur les réseaux publics ou invités). L’hôte peut activer le partage de connexion de son téléphone, l’archer s’y connecte, puis refaites une invitation.';
+      : network
+        ? `Ils sont pourtant sur le même réseau (${network}) : un téléphone bloque le trafic local. Sur iPhone, un navigateur autre que Safari (Chrome, Brave, Firefox…) doit avoir l’accès au réseau local : Réglages › le navigateur › Réseau local. Sinon, utilisez Safari, ou échangez les rôles d’hôte.`
+        : 'Le Wi-Fi isole peut-être les appareils (fréquent sur les réseaux publics ou invités). L’hôte peut activer le partage de connexion de son téléphone, l’archer s’y connecte, puis refaites une invitation.';
   return `Les téléphones ne se trouvent pas. ${advice} Adresses : hôte ${describe(offer)} · archer ${describe(answer)}.`;
 }
