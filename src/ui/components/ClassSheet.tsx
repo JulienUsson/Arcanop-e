@@ -1,7 +1,7 @@
-import { ACTION_ICONS, ACTION_LABELS, CLASSES } from '../../game/classes';
+import { ACTION_ICONS, ACTION_LABELS, actionMultiplier, CLASSES } from '../../game/classes';
 import { CERF_HEAL, GAUGE_MAX } from '../../game/difficulty';
+import { CRIT_MULTIPLIER } from '../../game/target';
 import type { Action, ClassId } from '../../game/types';
-import { TargetFace } from './TargetFace';
 
 const ALL_ACTIONS: Action[] = ['nemesis', 'creatures', 'roots', 'heal'];
 
@@ -9,14 +9,12 @@ const ACTION_HELP: Record<Action, string> = {
   nemesis: 'Dégâts directs à la Némésis.',
   creatures: 'Dégâts à la créature ciblée 🎯, le surplus passe à la suivante.',
   roots: 'Dégâts à la racine ciblée, avant qu’elle n’éclose.',
-  heal: 'Rend à l’Arbre-Cœur la moitié de la puissance.',
+  heal: 'Rend à l’Arbre-Cœur la moitié des points placés.',
 };
 
 export function ClassSheet({ classId }: { classId: ClassId }) {
   const cls = CLASSES[classId];
-  const counts = ALL_ACTIONS.map((action) => ({ action, count: cls.quadrants.filter((a) => a === action).length }));
-  const missing = counts.find((c) => c.count === 0)?.action;
-  const specialty = counts.find((c) => c.count === 2)?.action;
+  const rows = ALL_ACTIONS.map((action) => ({ action, multiplier: actionMultiplier(classId, action) }));
 
   return (
     <article className="class-sheet" style={{ ['--class-color' as string]: cls.color }}>
@@ -31,26 +29,25 @@ export function ClassSheet({ classId }: { classId: ClassId }) {
       <p className="sheet-lore">{cls.lore}</p>
 
       <section>
-        <h3>Votre blason</h3>
-        <div className="sheet-target">
-          <TargetFace classId={classId} markers={[]} readOnly onHit={() => {}} />
-        </div>
+        <h3>Vos actions</h3>
         <ul className="sheet-actions">
-          {counts.map(({ action, count }) => (
-            <li key={action} className={`action-${action}${count === 0 ? ' absent' : ''}`}>
+          {rows.map(({ action, multiplier }) => (
+            <li key={action} className={`action-${action}${multiplier === 0 ? ' absent' : ''}${multiplier > 1 ? ' specialty' : ''}`}>
               <span className="sheet-action-name">
                 {ACTION_ICONS[action]} {ACTION_LABELS[action]}
               </span>
-              <span className="sheet-action-count">{count === 0 ? 'absente' : count === 2 ? 'spécialité ×2' : '1 quadrant'}</span>
+              <span className="sheet-action-count">
+                {multiplier === 0 ? 'absente' : multiplier > 1 ? `spécialité ×${String(multiplier).replace('.', ',')}` : '×1'}
+              </span>
               <small>{ACTION_HELP[action]}</small>
             </li>
           ))}
         </ul>
-        {specialty && missing && (
-          <p className="hint">
-            Spécialité : {ACTION_LABELS[specialty]}, sur deux quadrants opposés. Action absente : {ACTION_LABELS[missing]}.
-          </p>
-        )}
+        <p className="hint">
+          Après chaque volée, additionnez vos flèches (un X compte ×{CRIT_MULTIPLIER}), appliquez votre coefficient, puis répartissez
+          les points entre vos actions. Les points placés sur la spécialité comptent ×1,5. Cordon défavorable : une flèche sur la ligne
+          compte pour la zone inférieure.
+        </p>
       </section>
 
       <section className="sheet-power">
@@ -61,7 +58,7 @@ export function ClassSheet({ classId }: { classId: ClassId }) {
           {classId === 'cerf' ? `Soigne l’Arbre-Cœur de ${CERF_HEAL} PV.` : cls.powerText}
         </p>
         <p className="hint">
-          Se charge avec {GAUGE_MAX} flèches dans le jaune (9 ou 10), puis s’active quand vous le décidez.
+          Se charge avec {GAUGE_MAX} flèches dans le jaune (9, 10 ou X), puis s’active quand vous le décidez.
         </p>
       </section>
 

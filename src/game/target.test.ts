@@ -1,34 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { hitAt, quadrantAt, scoreAt } from './target';
+import { arrowLabel, arrowPoints, isYellow } from './target';
 
-describe('blason', () => {
-  it('compte les anneaux du centre vers l’extérieur', () => {
-    expect(scoreAt(0, 0)).toBe(10);
-    expect(scoreAt(0.05, 0)).toBe(10);
-    expect(scoreAt(0.15, 0)).toBe(9);
-    expect(scoreAt(0.95, 0)).toBe(1);
-    expect(scoreAt(1, 0)).toBe(0);
+describe('flèches', () => {
+  it('double la valeur d’un X', () => {
+    expect(arrowPoints({ score: 10, x: true })).toBe(20);
+    expect(arrowPoints({ score: 10, x: false })).toBe(10);
+    expect(arrowPoints({ score: 0, x: false })).toBe(0);
   });
 
-  it('donne la zone inférieure sur le cordon', () => {
-    expect(scoreAt(0.1, 0)).toBe(9);
-    expect(scoreAt(0, 0.5)).toBe(5);
+  it('libelle les flèches comme sur une feuille de marque', () => {
+    expect(arrowLabel({ score: 10, x: true })).toBe('X');
+    expect(arrowLabel({ score: 7, x: false })).toBe('7');
+    expect(arrowLabel({ score: 0, x: false })).toBe('M');
   });
 
-  it('numérote les quadrants en lecture', () => {
-    expect(quadrantAt(-0.5, -0.5)).toBe(0);
-    expect(quadrantAt(0.5, -0.5)).toBe(1);
-    expect(quadrantAt(-0.5, 0.5)).toBe(2);
-    expect(quadrantAt(0.5, 0.5)).toBe(3);
-  });
-
-  it('propose les deux quadrants adjacents sur un trait', () => {
-    expect(hitAt(0.01, -0.5, 0.03)?.quadrants).toEqual([0, 1]);
-    expect(hitAt(0.01, 0.5, 0.03)?.quadrants).toEqual([2, 3]);
-    expect(hitAt(-0.5, 0.01, 0.03)?.quadrants).toEqual([0, 2]);
-    expect(hitAt(0.5, -0.01, 0.03)?.quadrants).toEqual([1, 3]);
-    expect(hitAt(0.01, 0.01, 0.03)?.quadrants).toEqual([0, 1, 2, 3]);
-    expect(hitAt(0.4, 0.4, 0.03)?.quadrants).toEqual([3]);
-    expect(hitAt(1.2, 0, 0.03)).toBeNull();
+  it('reconnaît le jaune', () => {
+    expect(isYellow(9)).toBe(true);
+    expect(isYellow(8)).toBe(false);
   });
 });

@@ -1,4 +1,4 @@
-import type { Arrow, GameState } from '../game/types';
+import type { GameState, Submission } from '../game/types';
 import { decode, encode, type GuestMessage, type HostMessage, type RosterEntry } from './protocol';
 import { acceptOffer, closePeer, type PeerLink } from './rtc';
 import { decodeSignal, signalToQr, signalToText } from './sdp';
@@ -40,6 +40,10 @@ export class GuestSession {
     try {
       last = JSON.parse(localStorage.getItem(LAST_KEY) ?? 'null');
     } catch {}
+    if (last?.state?.phase.kind === 'volley' && Object.values(last.state.phase.submissions).some((sub) => Array.isArray(sub))) {
+      last.state.phase.submissions = {};
+    }
+    if (last?.state?.lastEvent && 'hits' in last.state.lastEvent) last.state.lastEvent = null;
     this.snapshot = {
       status: last?.state ? 'lost' : 'idle',
       answer: null,
@@ -138,10 +142,10 @@ export class GuestSession {
     this.send({ t: 'release' });
   }
 
-  submit(arrows: Arrow[]) {
+  submit(submission: Submission) {
     const { state, you } = this.snapshot;
     if (!state || !you || state.phase.kind !== 'volley') return;
-    this.send({ t: 'submit', playerId: you, volley: state.phase.volley, arrows });
+    this.send({ t: 'submit', playerId: you, volley: state.phase.volley, submission });
   }
 
   power(targetUid?: string) {

@@ -30,28 +30,27 @@ Les archers sans téléphone sont saisis par l'hôte (onglet *Saisie*). L'hôte 
 
 ## Règles
 
-### Le blason
-Chaque archer tire sur un blason partagé en quatre quadrants par deux traits perpendiculaires.
-- Le **score** (anneaux standard de 1 à 10) fixe la puissance : `score × coefficient`, arrondi.
-- Le **quadrant** fixe l'action, selon la classe.
-- **Cordon** défavorable : la zone inférieure compte. À la saisie, on touche directement la zone inférieure, le tap donne toujours le score de la zone touchée.
-- **Trait** favorable : on touche le trait, l'application propose les actions des deux quadrants voisins (les quatre au centre).
-- Chaque flèche dans le jaune (9 ou 10) ajoute un point de jauge. À 3 points, le pouvoir de l'esprit est activable.
+### La volée
+Chaque archer tire ses flèches (3 par défaut) sur un blason classique, puis saisit leurs scores sur son téléphone.
+- **Cordon défavorable** : une flèche qui touche la ligne entre deux zones compte pour la zone inférieure (sur le cordon du 9 → 8). L'écran de saisie le rappelle.
+- **X = coup critique** : la flèche compte double, soit 20 points.
+- **Réserve de points** : somme des flèches × coefficient de niveau, arrondie.
+- **Répartition** : l'archer distribue librement sa réserve entre les actions de son esprit. Les points placés sur la **spécialité** comptent ×1,5. Chaque esprit a une action absente.
+- Chaque flèche dans le jaune (9, 10 ou X) ajoute un point de jauge. À 3 points, le pouvoir de l'esprit est activable.
 
 ### Les esprits
-La spécialité occupe deux quadrants opposés (haut-gauche et bas-droit), de sorte que chaque trait sépare toujours la spécialité d'une autre action.
 
-| Classe | Haut-gauche | Haut-droit | Bas-gauche | Bas-droit | Pouvoir |
-|---|---|---|---|---|---|
-| 🐺 Loup | Némésis | Créatures | Racines | Némésis | Dégâts de toute l'équipe doublés à la prochaine volée |
-| 🐻 Ours | Créatures | Némésis | Soin | Créatures | Retarde une racine d'une manche |
-| 🦉 Hibou | Racines | Némésis | Créatures | Racines | Révèle la prochaine carte de la Corruption |
-| 🦌 Cerf | Soin | Némésis | Racines | Soin | Soigne l'Arbre-Cœur de 15 PV |
+| Classe | Spécialité ×1,5 | Actions ×1 | Absente | Pouvoir |
+|---|---|---|---|---|
+| 🐺 Loup | Némésis | Créatures, Racines | Soin | Dégâts de toute l'équipe doublés à la prochaine volée |
+| 🐻 Ours | Créatures | Némésis, Soin | Racines | Retarde une racine d'une manche |
+| 🦉 Hibou | Racines | Némésis, Créatures | Soin | Révèle la prochaine carte de la Corruption |
+| 🦌 Cerf | Soin | Némésis, Racines | Créatures | Soigne l'Arbre-Cœur de 15 PV |
 
 ### Les actions
 - **Némésis** : dégâts directs.
-- **Créatures / Racines** : dégâts à la cible désignée 🎯 (touchée sur le tableau de combat par n'importe quel joueur pendant le conseil), le surplus passe aux suivantes. Sans cible en jeu, la flèche frappe la Némésis : aucune flèche n'est perdue.
-- **Soin** : rend la moitié de la puissance en PV à l'Arbre-Cœur.
+- **Créatures / Racines** : dégâts à la cible désignée 🎯 (touchée sur le tableau de combat par n'importe quel joueur pendant le conseil), le surplus passe aux suivantes. Sans cible en jeu, ces points frappent la Némésis : rien n'est perdu.
+- **Soin** : rend la moitié des points placés en PV à l'Arbre-Cœur.
 
 ### Une manche
 1. Le paquet d'ordre de tour est mélangé (Normal : 3 Volée, 2 Némésis).
@@ -66,7 +65,7 @@ Victoire quand la Némésis tombe à 0 PV. Défaite quand l'Arbre-Cœur tombe à
 | | Facile | Normal | Difficile |
 |---|---|---|---|
 | Ordre de tour par manche | 3 Volée, 1 Némésis | 3 Volée, 2 Némésis | 2 Volée, 2 Némésis |
-| PV Némésis par flèche de volée | 50 | 70 | 70 |
+| PV Némésis par flèche de volée | 62 | 88 | 88 |
 | PV Arbre-Cœur | 60 | 45 | 40 |
 | Cartes de colère (niveaux 1/2/3) | 4/4/3 | 4/5/4 | 4/5/5 |
 | Multiplicateur des dégâts à l'Arbre | ×1,2 | ×1,8 | ×1,9 |
@@ -77,7 +76,7 @@ Les PV de la Némésis sont proportionnels au nombre de flèches tirées par vol
 Le coefficient de niveau sert de handicap : un débutant (×1,3 ou ×1,5) pèse autant qu'un tireur confirmé, l'équipe reste mixte.
 
 ### Équilibrage
-`BALANCE=1 npx vitest run src/game/balance.test.ts` simule des centaines de parties avec des archers virtuels (score moyen 5, 6,5 ou 8, 75 % de flèches dans le quadrant visé). Repères actuels pour quatre archers, une par classe, 3 flèches : Facile gagné presque toujours ; Normal ~99 % à 6,5 de moyenne et ~55 % à 5 en 12 à 18 volées ; Difficile ~25 % à 6,5 et ~95 % à 8. Les archers virtuels jouent de façon optimale ; une vraie équipe fait moins bien.
+`BALANCE=1 npx vitest run src/game/balance.test.ts` simule des centaines de parties avec des archers virtuels (score moyen 5, 6,5 ou 8, un 10 sur trois est un X) qui placent toute leur réserve sur l'action la plus utile. Repères actuels pour quatre archers, une par classe, 3 flèches : Facile gagné presque toujours ; Normal ~98 % à 6,5 de moyenne et ~50 % à 5, en 12 à 18 volées ; Difficile ~35 % à 6,5 et ~95 % à 8. Les archers virtuels jouent de façon optimale ; une vraie équipe fait moins bien.
 
 ## Architecture
 
@@ -109,12 +108,16 @@ src/
 `vite-plugin-pwa` (Workbox, `generateSW`) précache toute l'application ; le manifeste déclare un affichage `standalone` en portrait. L'écran reste allumé pendant la partie (Wake Lock API) et la narration peut être lue à voix haute (Web Speech API, voix française si disponible), réglage propre à chaque appareil.
 
 ### Saisie
-Le blason est un SVG en coordonnées normalisées : le score vaut `10 − ⌊r × 10⌋`, ce qui place naturellement le cordon dans la zone inférieure. Chaque zone (anneau × quadrant) se comporte comme un bouton : un tap l'illumine entièrement et ajoute la flèche. Pas de liste d'impacts à gérer : le carquois se vide, un total par action s'affiche sous le blason, et ↶ retire la dernière flèche. La tolérance des traits est d'au moins 8 pixels écran de part et d'autre, pour qu'un doigt les atteigne sans viser au pixel près. Le brouillon de chaque volée survit aux changements d'onglet ; une volée envoyée reste corrigeable jusqu'à la résolution.
+La saisie se fait en deux temps, sans viser de zone sur un dessin de blason :
+1. **Scores** : un pavé de gros boutons aux couleurs des anneaux (X, 10 à 1, M). Le rappel du cordon défavorable reste affiché au-dessus. ↶ retire la dernière flèche.
+2. **Répartition** : dès la dernière flèche, l'écran affiche la réserve et la répartit par défaut sur l'action suggérée (ou la spécialité). Toucher une action y place toute la réserve ; − et + ajustent point par point (maintenir accélère), + reprend des points à l'action la mieux dotée. L'effet de chaque action (dégâts, PV) s'affiche en direct, bonus de spécialité et Hurlement de la Meute compris.
+
+Le moteur revalide toute saisie : scores bornés, X seulement sur un 10, points d'une action absente ignorés, points non répartis reportés sur la spécialité. Le brouillon de chaque volée survit aux changements d'onglet ; une volée envoyée reste corrigeable jusqu'à la résolution.
 
 ### Guidage et mise en scène
 - **Étapes de volée** : l'état de jeu porte l'étape (`council`, `shoot`, `input`) ; l'hôte la fait avancer (« Au pas de tir ! », « Flèches tirées : saisie ») et les téléphones des archers basculent d'eux-mêmes sur le tableau de combat pendant le conseil, puis sur leur cible.
-- **Conseil** : `src/game/advice.ts` liste les menaces (racine sur le point d'éclore, créatures, Arbre-Cœur affaibli, pouvoirs prêts, cartes restantes) et propose à chaque archer une cible parmi ses quadrants. Ce ne sont que des suggestions : l'équipe décide.
-- **Scène plein écran** : chaque événement du moteur porte un type (`intro`, `volley`, `nemesis`, `resolve`, `round`, `power`, `victory`, `defeat`) et ses données (carte jouée, détail flèche par flèche). La scène retourne la carte, égrène les flèches une à une avec leurs dégâts, puis attend un tap ; « Passer » accélère.
+- **Conseil** : `src/game/advice.ts` liste les menaces (racine sur le point d'éclore, créatures, Arbre-Cœur affaibli, pouvoirs prêts, cartes restantes) et propose à chaque archer une action, qui sert aussi de répartition par défaut. Ce ne sont que des suggestions : l'équipe décide.
+- **Scène plein écran** : chaque événement du moteur porte un type (`intro`, `volley`, `nemesis`, `resolve`, `round`, `power`, `victory`, `defeat`) et ses données (carte jouée, détail de chaque volée : scores, réserve, effets). La scène retourne la carte, égrène les volées une à une avec leurs effets et les coups critiques, puis attend un tap ; « Passer » accélère.
 - **Retours visuels** : chiffres de dégâts et de soins flottants, portraits qui tremblent sous les coups, barres de vie avec traînée, créatures qui apparaissent, racines urgentes qui clignotent. Les animations respectent `prefers-reduced-motion`.
 - **Sons** : effets synthétisés en direct (Web Audio, aucun fichier), désactivables par 🎵 ; la lecture vocale de la narration se règle par 🗣️.
 - **Fiche de classe** : rôle, blason annoté, spécialité, action absente, pouvoir et conseils. Accessible depuis la mise en place, le choix du Gardien, l'onglet *Fiche* de l'archer, la saisie de l'hôte et les règles.

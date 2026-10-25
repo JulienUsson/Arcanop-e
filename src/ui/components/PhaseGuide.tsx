@@ -55,15 +55,15 @@ function texts(state: GameState, role: 'host' | 'guest', playerId?: string | nul
     if (phase.step === 'shoot') {
       return {
         title: 'Tirez !',
-        text: role === 'host' ? `Chaque archer tire ses ${arrows} flèches. Passez à la saisie quand toutes sont plantées.` : `Tirez vos ${arrows} flèches, puis saisissez vos impacts.`,
+        text: role === 'host' ? `Chaque archer tire ses ${arrows} flèches. Passez à la saisie quand toutes sont plantées.` : `Tirez vos ${arrows} flèches, puis saisissez vos scores.`,
       };
     }
     if (role === 'guest' && playerId && phase.submissions[playerId]) {
       return { title: 'Volée envoyée', text: `En attente des autres Gardiens (${done}/${total}).` };
     }
     return {
-      title: 'Saisie des impacts',
-      text: role === 'host' ? `${done}/${total} archers ont saisi leur volée.` : 'Touchez votre blason à l’endroit de chaque flèche.',
+      title: 'Saisie des scores',
+      text: role === 'host' ? `${done}/${total} archers ont saisi leur volée.` : 'Saisissez le score de chaque flèche (cordon : zone inférieure), puis répartissez vos points.',
     };
   }
   return { title: phase.result === 'victory' ? 'Victoire !' : 'Défaite…', text: phase.reason };

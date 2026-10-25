@@ -1,38 +1,23 @@
-import type { Quadrant } from './types';
+import type { Arrow } from './types';
 
-export const RINGS = 10;
-
-export interface TargetHit {
-  score: number;
-  quadrants: Quadrant[];
-}
-
-export function scoreAt(x: number, y: number): number {
-  const r = Math.hypot(x, y);
-  if (r >= 1) return 0;
-  return RINGS - Math.floor(r * RINGS);
-}
-
-export function quadrantAt(x: number, y: number): Quadrant {
-  return (((y < 0 ? 0 : 2) + (x < 0 ? 0 : 1)) as Quadrant);
-}
-
-export function hitAt(x: number, y: number, lineTolerance: number): TargetHit | null {
-  const score = scoreAt(x, y);
-  if (score === 0) return null;
-  const onVertical = Math.abs(x) <= lineTolerance;
-  const onHorizontal = Math.abs(y) <= lineTolerance;
-  if (onVertical && onHorizontal) return { score, quadrants: [0, 1, 2, 3] };
-  if (onVertical) return { score, quadrants: y < 0 ? [0, 1] : [2, 3] };
-  if (onHorizontal) return { score, quadrants: x < 0 ? [0, 2] : [1, 3] };
-  return { score, quadrants: [quadrantAt(x, y)] };
-}
+export const CRIT_MULTIPLIER = 2;
 
 export function isYellow(score: number): boolean {
   return score >= 9;
 }
 
+export function arrowPoints(arrow: Arrow): number {
+  if (arrow.score <= 0) return 0;
+  return arrow.x ? arrow.score * CRIT_MULTIPLIER : arrow.score;
+}
+
+export function arrowLabel(arrow: Arrow): string {
+  if (arrow.x) return 'X';
+  return arrow.score === 0 ? 'M' : String(arrow.score);
+}
+
 export const RING_COLORS: Record<number, { fill: string; text: string; line: string }> = {
+  0: { fill: '#3a3f3b', text: '#ddd', line: '#666' },
   1: { fill: '#f4f1ea', text: '#222', line: '#222' },
   2: { fill: '#f4f1ea', text: '#222', line: '#222' },
   3: { fill: '#1d1d1f', text: '#eee', line: '#eee' },

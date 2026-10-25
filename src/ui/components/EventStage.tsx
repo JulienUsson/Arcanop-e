@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { ACTION_ICONS, CLASSES } from '../../game/classes';
 import { describeCard } from '../../game/engine';
 import { getCard, getNemesis } from '../../game/nemesis';
-import type { CorruptionCard, GameEvent, GameState, Hit } from '../../game/types';
+import { arrowLabel, RING_COLORS } from '../../game/target';
+import type { CorruptionCard, GameEvent, GameState, VolleyResult } from '../../game/types';
 import { play, type Sound } from '../sfx';
 
 const STEP_MS = 420;
@@ -28,14 +29,15 @@ const OPENING_SOUND: Partial<Record<GameEvent['kind'], Sound>> = {
   defeat: 'defeat',
 };
 
-function hitSound(hit: Hit): Sound {
-  if (hit.killed) return 'kill';
-  if (!hit.action) return 'miss';
-  return hit.action === 'heal' ? 'heal' : 'hit';
+function resultSound(result: VolleyResult): Sound {
+  if (result.effects.some((e) => e.killed)) return 'kill';
+  if (result.arrows.some((a) => a.x)) return 'power';
+  if (result.pool === 0) return 'miss';
+  return result.effects.every((e) => e.action === 'heal') ? 'heal' : 'hit';
 }
 
 function steps(event: GameEvent): number {
-  if (event.hits?.length) return event.hits.length;
+  if (event.results?.length) return event.results.length;
   if (event.kind === 'round') return event.lines.length;
   return 0;
 }
@@ -64,8 +66,8 @@ export function EventStage({ state, event }: { state: GameState; event: GameEven
   useEffect(() => {
     if (!shown || revealed >= total) return;
     const timer = setTimeout(() => {
-      const hit = shown.hits?.[revealed];
-      if (hit) play(hitSound(hit));
+      const result = shown.results?.[revealed];
+      if (result) play(resultSound(result));
       setRevealed((r) => r + 1);
     }, revealed === 0 ? 700 : STEP_MS);
     return () => clearTimeout(timer);
@@ -158,17 +160,17 @@ function StageContent({ event, state, revealed }: { event: GameEvent; state: Gam
         <>
           <h1 className="stage-title">{event.title}</h1>
           {event.boosted && <div className="stage-boost">🐺 La Meute chasse : dégâts ×2</div>}
-          <HitList event={event} state={state} revealed={revealed} />
-          {revealed >= (event.hits?.length ?? 0) && <p className="stage-story pop">{event.narration}</p>}
+          <ResultList event={event} state={state} revealed={revealed} />
+          {revealed >= (event.results?.length ?? 0) && <p className="stage-story pop">{event.narration}</p>}
         </>
       );
     case 'victory':
     case 'defeat':
       return (
         <>
-          {event.hits && event.hits.length > 0 && <HitList event={event} state={state} revealed={revealed} />}
-          {event.cardId && !event.hits?.length && <NemesisCard event={{ ...event, lines: [] }} state={state} />}
-          {revealed >= (event.hits?.length ?? 0) && (
+          {event.results && event.results.length > 0 && <ResultList event={event} state={state} revealed={revealed} />}
+          {event.cardId && !event.results?.length && <NemesisCard event={{ ...event, lines: [] }} state={state} />}
+          {revealed >= (event.results?.length ?? 0) && (
             <div className="pop">
               <div className={`stage-portrait ${event.kind === 'victory' ? 'tree burst' : 'nemesis rise'}`}>
                 {event.kind === 'victory' ? '🌳' : '🥀'}
@@ -243,34 +245,50 @@ function NemesisCard({ event, state }: { event: GameEvent; state: GameState }) {
   );
 }
 
-function HitList({ event, state, revealed }: { event: GameEvent; state: GameState; revealed: number }) {
-  const hits = event.hits ?? [];
-  const shownHits = hits.slice(0, revealed);
-  const damage = shownHits.filter((h) => h.action && h.action !== 'heal').reduce((sum, h) => sum + h.amount, 0);
-  const heal = shownHits.filter((h) => h.action === 'heal').reduce((sum, h) => sum + h.amount, 0);
+function ResultList({ event, state, revealed }: { event: GameEvent; state: GameState; revealed: number }) {
+  const shown = (event.results ?? []).slice(0, revealed);
+  const effects = shown.flatMap((r) => r.effects);
+  const damage = effects.filter((e) => e.action !== 'heal').reduce((sum, e) => sum + e.amount, 0);
+  const heal = effects.filter((e) => e.action === 'heal').reduce((sum, e) => sum + e.amount, 0);
   return (
     <>
       <ul className="hit-list">
-        {shownHits.map((hit, i) => {
-          const player = state.players.find((p) => p.id === hit.playerId);
+        {shown.map((result) => {
+          const player = state.players.find((p) => p.id === result.playerId);
           const cls = player ? CLASSES[player.classId] : null;
+          const crit = result.arrows.some((a) => a.x);
           return (
-            <li key={i} className={`hit pop ${hit.action ? `action-${hit.action}` : 'miss'}${hit.score >= 9 ? ' gold' : ''}`}>
-              <span className="hit-who">
-                {cls?.emoji} {player?.name}
-              </span>
-              <span className="hit-score">{hit.score || '✗'}</span>
-              <span className="hit-effect">
-                {hit.action ? (
-                  <>
-                    {ACTION_ICONS[hit.action]} {hit.action === 'heal' ? `+${hit.amount}` : `−${hit.amount}`}
-                    <small>{hit.target}</small>
-                  </>
-                ) : (
-                  <small>hors cible</small>
-                )}
-              </span>
-              {hit.killed && <span className="hit-kill">☠ {hit.killed} abattu !</span>}
+            <li key={result.playerId} className={`result pop${crit ? ' crit' : ''}`}>
+              <div className="result-head">
+                <span className="hit-who">
+                  {cls?.emoji} {player?.name}
+                </span>
+                <span className="result-arrows">
+                  {result.arrows.map((a, i) => (
+                    <span key={i} className={`score-slot filled small${a.x ? ' crit' : ''}`} style={{ background: RING_COLORS[a.score].fill, color: RING_COLORS[a.score].text }}>
+                      {arrowLabel(a)}
+                    </span>
+                  ))}
+                </span>
+                <span className="result-pool">{result.pool} pts</span>
+              </div>
+              {crit && <div className="result-crit">✦ Coup critique ! ✦</div>}
+              <div className="result-effects">
+                {result.effects.length === 0 && <small>Aucun effet</small>}
+                {result.effects.map((e, i) => (
+                  <span key={i} className={`power-chip action-${e.action}`}>
+                    {ACTION_ICONS[e.action]} {e.action === 'heal' ? `+${e.amount}` : `−${e.amount}`}
+                    <small> {e.target}</small>
+                  </span>
+                ))}
+              </div>
+              {result.effects
+                .filter((e) => e.killed)
+                .map((e, i) => (
+                  <div key={i} className="hit-kill">
+                    ☠ {e.killed} abattu !
+                  </div>
+                ))}
             </li>
           );
         })}

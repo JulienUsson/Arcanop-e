@@ -20,13 +20,13 @@ describe('conseil', () => {
     const advice = councilAdvice(s);
     expect(advice[0]).toMatchObject({ urgent: true });
     expect(advice[0].text).toContain('Racine Étrangleuse');
-    expect(suggestion(s, 'h')).toMatchObject({ action: 'roots', quadrants: [0, 3] });
+    expect(suggestion(s, 'h')).toMatchObject({ action: 'roots' });
   });
 
   it('pousse le Cerf à soigner un Arbre-Cœur affaibli', () => {
     const s = structuredClone(reduce(createGame(config, 3, 'g'), { type: 'start' }));
     s.tree.hp = 10;
-    expect(suggestion(s, 'c')).toMatchObject({ action: 'heal', quadrants: [0, 3] });
+    expect(suggestion(s, 'c')).toMatchObject({ action: 'heal' });
     expect(councilAdvice(s).some((a) => a.urgent && a.text.includes('Arbre-Cœur'))).toBe(true);
   });
 });
