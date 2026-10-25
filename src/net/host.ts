@@ -56,8 +56,12 @@ export class HostSession {
     const saved = HostSession.saved();
     if (!saved) return null;
     const { state } = saved;
-    if (state.phase.kind === 'volley' && !state.phase.step) state.phase.step = 'input';
-    if (state.lastEvent && !state.lastEvent.kind) state.lastEvent = null;
+    if (state.phase.kind === 'volley') {
+      if (!state.phase.step) state.phase.step = 'input';
+      if (Object.values(state.phase.submissions).some((sub) => Array.isArray(sub))) state.phase.submissions = {};
+    }
+    if (state.lastEvent && (!state.lastEvent.kind || 'hits' in state.lastEvent)) state.lastEvent = null;
+    state.players.forEach((p) => (p.stats.crits ??= 0));
     return new HostSession(state, saved.claims);
   }
 
@@ -250,7 +254,7 @@ export class HostSession {
           this.send(conn, { t: 'notice', message: 'Cette volée est déjà résolue.' });
           return;
         }
-        this.dispatch({ type: 'submit', playerId: msg.playerId, arrows: msg.arrows });
+        this.dispatch({ type: 'submit', playerId: msg.playerId, submission: msg.submission });
         break;
       case 'power':
         if (msg.playerId !== conn.playerId) return;

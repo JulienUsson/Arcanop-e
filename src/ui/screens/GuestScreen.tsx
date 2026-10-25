@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { suggestion } from '../../game/advice';
 import { CLASSES } from '../../game/classes';
 import type { ClassId } from '../../game/types';
 import type { GuestSession } from '../../net/guest';
@@ -217,10 +218,12 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
             classId={me.classId}
             coef={me.coef}
             arrowsPerVolley={state.config.arrowsPerVolley}
+            boost={state.wolfBoost > 0 ? 2 : 1}
+            suggested={suggestion(state, me.id)?.action}
             submitted={submitted}
             canSubmit={connected && !!volley}
             blockedReason={connected ? 'La saisie s’ouvre quand l’hôte tire une carte Volée.' : 'Hors ligne : reconnectez-vous pour envoyer.'}
-            onSubmit={(arrows) => guest.submit(arrows)}
+            onSubmit={(submission) => guest.submit(submission)}
           />
           <PowerPanel state={state} playerId={me.id} disabled={!connected} onActivate={(uid) => guest.power(uid)} />
         </>

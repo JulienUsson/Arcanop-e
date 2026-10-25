@@ -1,15 +1,13 @@
-import { ACTION_ICONS, ACTION_LABELS, CLASSES } from './classes';
+import { ACTION_ICONS, ACTION_LABELS, actionMultiplier, CLASSES } from './classes';
 import { describeCard, powerAvailability } from './engine';
 import { getCard, getNemesis } from './nemesis';
-import type { Action, GameState, Quadrant } from './types';
+import type { Action, GameState } from './types';
 
 export interface Advice {
   icon: string;
   text: string;
   urgent?: boolean;
 }
-
-const QUADRANT_NAMES = ['haut-gauche', 'haut-droit', 'bas-gauche', 'bas-droit'];
 
 export function councilAdvice(state: GameState): Advice[] {
   const out: Advice[] = [];
@@ -62,18 +60,16 @@ export function councilAdvice(state: GameState): Advice[] {
 
 export interface Suggestion {
   action: Action;
-  quadrants: Quadrant[];
   reason: string;
 }
 
 export function suggestion(state: GameState, playerId: string): Suggestion | null {
   const player = state.players.find((p) => p.id === playerId);
   if (!player) return null;
-  const quadrants = CLASSES[player.classId].quadrants;
-  const has = (a: Action) => quadrants.includes(a);
+  const has = (a: Action) => actionMultiplier(player.classId, a) > 0;
   const urgentRoot = state.roots.some((r) => r.countdown <= 1);
-  let action: Action = 'nemesis';
-  let reason = 'Frappez la Némésis.';
+  let action: Action = CLASSES[player.classId].specialty === 'heal' ? 'nemesis' : CLASSES[player.classId].specialty;
+  let reason = action === 'nemesis' ? 'Frappez la Némésis.' : 'Misez sur votre spécialité.';
   if (has('heal') && state.tree.hp / state.tree.maxHp <= 0.4) {
     action = 'heal';
     reason = 'L’Arbre-Cœur a besoin de soins.';
@@ -86,13 +82,16 @@ export function suggestion(state: GameState, playerId: string): Suggestion | nul
   } else if (has('roots') && state.roots.length > 0 && player.classId === 'hibou') {
     action = 'roots';
     reason = 'Détruisez les racines avant qu’elles n’éclosent.';
+  } else if (action !== 'nemesis' && ((action === 'creatures' && state.creatures.length === 0) || (action === 'roots' && state.roots.length === 0))) {
+    action = 'nemesis';
+    reason = 'Rien d’autre à viser : frappez la Némésis.';
   } else if (has('heal') && state.tree.hp / state.tree.maxHp <= 0.7) {
     action = 'heal';
     reason = 'Gardez l’Arbre-Cœur en forme.';
   }
-  return { action, reason, quadrants: quadrants.flatMap((a, q) => (a === action ? [q as Quadrant] : [])) };
+  return { action, reason };
 }
 
 export function describeSuggestion(s: Suggestion): string {
-  return `${ACTION_ICONS[s.action]} ${ACTION_LABELS[s.action]} (${s.quadrants.map((q) => QUADRANT_NAMES[q]).join(' ou ')})`;
+  return `${ACTION_ICONS[s.action]} ${ACTION_LABELS[s.action]}`;
 }

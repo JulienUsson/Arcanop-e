@@ -1,7 +1,7 @@
 import { it } from 'vitest';
-import { CLASSES } from './classes';
-import { createGame, powerAvailability, reduce } from './engine';
-import type { Action, Arrow, ClassId, Difficulty, GameConfig, GameState, Quadrant } from './types';
+import { actionMultiplier } from './classes';
+import { createGame, powerAvailability, reduce, volleyPool } from './engine';
+import type { Action, ClassId, Difficulty, GameConfig, GameState, Submission } from './types';
 
 interface Rng {
   value: number;
@@ -17,24 +17,21 @@ function gaussian(rng: Rng): number {
 }
 
 function intent(state: GameState, classId: ClassId): Action {
-  const actions = new Set(CLASSES[classId].quadrants);
-  if (actions.has('heal') && state.tree.hp < state.tree.maxHp * 0.6) return 'heal';
-  if (actions.has('roots') && state.roots.some((r) => r.countdown <= 1)) return 'roots';
+  const has = (a: Action) => actionMultiplier(classId, a) > 0;
+  if (has('heal') && state.tree.hp < state.tree.maxHp * 0.6) return 'heal';
+  if (has('roots') && state.roots.some((r) => r.countdown <= 1)) return 'roots';
   if (classId === 'ours' && state.creatures.length > 0) return 'creatures';
   if (classId === 'hibou' && state.roots.length > 0) return 'roots';
-  if (actions.has('creatures') && state.creatures.length > 1) return 'creatures';
+  if (has('creatures') && state.creatures.length > 1) return 'creatures';
   return 'nemesis';
 }
 
-function volley(state: GameState, classId: ClassId, mean: number, count: number, rng: Rng): Arrow[] {
-  const quadrants = CLASSES[classId].quadrants;
-  return Array.from({ length: count }, () => {
+function volley(state: GameState, classId: ClassId, coef: number, mean: number, count: number, rng: Rng): Submission {
+  const arrows = Array.from({ length: count }, () => {
     const score = Math.max(0, Math.min(10, Math.round(mean + gaussian(rng) * 2)));
-    if (score === 0) return { score, quadrant: null, action: null };
-    let quadrant = quadrants.indexOf(intent(state, classId)) as Quadrant;
-    if (random(rng) > 0.75) quadrant = Math.floor(random(rng) * 4) as Quadrant;
-    return { score, quadrant, action: quadrants[quadrant] };
+    return { score, x: score === 10 && random(rng) < 0.35 };
   });
+  return { arrows, allocation: { [intent(state, classId)]: volleyPool(arrows, coef) } };
 }
 
 function simulate(difficulty: Difficulty, classes: ClassId[], mean: number, games: number, arrows = 3): string {
@@ -59,7 +56,7 @@ function simulate(difficulty: Difficulty, classes: ClassId[], mean: number, game
         if (powerAvailability(s, p.id).ok) s = reduce(s, { type: 'power', playerId: p.id, targetUid: s.roots[0]?.uid });
       }
       for (const p of s.players) {
-        s = reduce(s, { type: 'submit', playerId: p.id, arrows: volley(s, p.classId, mean, arrows, rng) });
+        s = reduce(s, { type: 'submit', playerId: p.id, submission: volley(s, p.classId, p.coef, mean, arrows, rng) });
       }
       s = reduce(s, { type: 'resolve' });
     }

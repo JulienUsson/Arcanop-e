@@ -1,10 +1,10 @@
-import type { Arrow, GameState } from '../game/types';
+import type { GameState, Submission } from '../game/types';
 
 export type GuestMessage =
   | { t: 'hello'; token: string; gameId: string | null }
   | { t: 'claim'; playerId: string }
   | { t: 'release' }
-  | { t: 'submit'; playerId: string; volley: number; arrows: Arrow[] }
+  | { t: 'submit'; playerId: string; volley: number; submission: Submission }
   | { t: 'power'; playerId: string; targetUid?: string }
   | { t: 'focus'; kind: 'creature' | 'root'; uid: string | null };
 

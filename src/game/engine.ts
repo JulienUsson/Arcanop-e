@@ -1,32 +1,35 @@
-import { CLASSES, ACTION_LABELS } from './classes';
+import { ACTION_LABELS, ACTIONS, actionMultiplier, availableActions, CLASSES } from './classes';
 import { CERF_HEAL, DIFFICULTIES, GAUGE_MAX, HEAL_FACTOR, REFERENCE_ARROWS } from './difficulty';
 import { getCard, getNemesis, ROUND_NARRATIONS, VOLLEY_NARRATIONS } from './nemesis';
 import { nextRandom, shuffle } from './rng';
-import { isYellow } from './target';
+import { arrowLabel, arrowPoints, isYellow } from './target';
 import type {
   Action,
+  Allocation,
   Arrow,
   AttackEffect,
   CorruptionCard,
   CreatureCard,
+  ClassId,
   CreatureEffect,
+  Effect,
   EventKind,
   GameAction,
   GameEvent,
   GameConfig,
   GameState,
-  Hit,
   LogTone,
   Player,
   PlayerStats,
   RootCard,
   RootEffect,
+  Submission,
   TurnCard,
+  VolleyResult,
   VolleyStep,
 } from './types';
 
 const LOG_LIMIT = 80;
-const ACTIONS: Action[] = ['nemesis', 'creatures', 'roots', 'heal'];
 
 export function emptyStats(): PlayerStats {
   return {
@@ -35,6 +38,7 @@ export function emptyStats(): PlayerStats {
     totalScore: 0,
     yellows: 0,
     tens: 0,
+    crits: 0,
     damageNemesis: 0,
     damageCreatures: 0,
     damageRoots: 0,
@@ -66,13 +70,17 @@ function treeDamage(state: GameState, amount: number): number {
   return Math.max(1, Math.round(amount * treeDamageFactor(state.config)));
 }
 
-export function arrowPower(score: number, coef: number): number {
-  if (score <= 0) return 0;
-  return Math.max(1, Math.round(score * coef));
+export function volleyPool(arrows: Arrow[], coef: number): number {
+  const raw = arrows.reduce((sum, a) => sum + arrowPoints(a), 0);
+  return raw > 0 ? Math.max(1, Math.round(raw * coef)) : 0;
 }
 
-export function healAmount(power: number): number {
-  return power > 0 ? Math.max(1, Math.round(power * HEAL_FACTOR)) : 0;
+export function effectAmount(classId: ClassId, action: Action, points: number, boost = 1): number {
+  const multiplier = actionMultiplier(classId, action);
+  if (multiplier === 0 || points <= 0) return 0;
+  const base = points * multiplier;
+  if (action === 'heal') return Math.max(1, Math.round(base * HEAL_FACTOR));
+  return Math.max(1, Math.round(base * boost));
 }
 
 export function createGame(config: GameConfig, seed: number, gameId: string): GameState {
@@ -414,22 +422,33 @@ function advance(state: GameState): GameState {
   return { ...state, phase: { ...state.phase, step: NEXT_STEP[state.phase.step] } };
 }
 
-function sanitizeArrows(arrows: Arrow[], max: number): Arrow[] {
-  return arrows.slice(0, max).map((a) => {
-    const score = Math.max(0, Math.min(10, Math.round(Number(a.score) || 0)));
-    if (score === 0) return { score: 0, action: null, quadrant: null };
-    const action = ACTIONS.includes(a.action as Action) ? (a.action as Action) : null;
-    const quadrant = a.quadrant !== null && [0, 1, 2, 3].includes(a.quadrant) ? a.quadrant : null;
-    return { score, action, quadrant };
+function sanitizeSubmission(submission: Submission, player: Player, max: number): Submission {
+  const arrows: Arrow[] = (Array.isArray(submission?.arrows) ? submission.arrows : []).slice(0, max).map((a) => {
+    const score = Math.max(0, Math.min(10, Math.round(Number(a?.score) || 0)));
+    return { score, x: score === 10 && a?.x === true };
   });
+  let remaining = volleyPool(arrows, player.coef);
+  const allocation: Allocation = {};
+  for (const action of availableActions(player.classId)) {
+    const wanted = Math.max(0, Math.round(Number(submission?.allocation?.[action]) || 0));
+    const points = Math.min(wanted, remaining);
+    if (points > 0) allocation[action] = points;
+    remaining -= points;
+  }
+  if (remaining > 0) {
+    const specialty = CLASSES[player.classId].specialty;
+    allocation[specialty] = (allocation[specialty] ?? 0) + remaining;
+  }
+  return { arrows, allocation };
 }
 
-function submit(state: GameState, playerId: string, arrows: Arrow[]): GameState {
+function submit(state: GameState, playerId: string, submission: Submission): GameState {
   if (state.phase.kind !== 'volley') return state;
-  if (!state.players.some((p) => p.id === playerId)) return state;
+  const player = state.players.find((p) => p.id === playerId);
+  if (!player) return state;
   const s = clone(state);
   if (s.phase.kind !== 'volley') return state;
-  s.phase.submissions[playerId] = sanitizeArrows(arrows, s.config.arrowsPerVolley);
+  s.phase.submissions[playerId] = sanitizeSubmission(submission, player, s.config.arrowsPerVolley);
   return s;
 }
 
@@ -486,70 +505,64 @@ function resolve(state: GameState): GameState {
   const phase = state.phase;
   const boost = s.wolfBoost > 0 ? 2 : 1;
   const totals = { nemesis: 0, creatures: 0, roots: 0, heal: 0 };
-  const hits: Hit[] = [];
-  ctx.extra = { hits, boosted: boost > 1 };
+  const results: VolleyResult[] = [];
+  ctx.extra = { results, boosted: boost > 1 };
   if (boost > 1) ctx.line('La Meute chasse : les dégâts de cette volée sont doublés !', 'power');
   for (const player of s.players) {
-    const arrows = phase.submissions[player.id];
-    if (!arrows) {
+    const submission = phase.submissions[player.id];
+    if (!submission) {
       ctx.line(`${player.name} n’a pas saisi de volée.`);
       continue;
     }
-    const parts: string[] = [];
+    const { arrows, allocation } = submission;
     let volleyScore = 0;
     for (const arrow of arrows) {
       player.stats.arrows += 1;
-      if (arrow.score <= 0 || !arrow.action) {
-        player.stats.misses += arrow.score <= 0 ? 1 : 0;
-        parts.push('hors cible');
-        hits.push({ playerId: player.id, score: 0, action: null, amount: 0, target: '' });
-        continue;
-      }
       volleyScore += arrow.score;
       player.stats.totalScore += arrow.score;
+      if (arrow.score === 0) player.stats.misses += 1;
       if (arrow.score === 10) player.stats.tens += 1;
+      if (arrow.x) player.stats.crits += 1;
       if (isYellow(arrow.score)) {
         player.stats.yellows += 1;
         player.gauge = Math.min(GAUGE_MAX, player.gauge + 1);
       }
-      const power = arrowPower(arrow.score, player.coef);
-      if (arrow.action === 'heal') {
-        const heal = Math.min(healAmount(power), s.tree.maxHp - s.tree.hp);
+    }
+    const pool = volleyPool(arrows, player.coef);
+    const effects: Effect[] = [];
+    for (const action of ACTIONS) {
+      const points = allocation[action] ?? 0;
+      const amount = effectAmount(player.classId, action, points, boost);
+      if (amount <= 0) continue;
+      if (action === 'heal') {
+        const heal = Math.min(amount, s.tree.maxHp - s.tree.hp);
         s.tree.hp += heal;
         player.stats.healing += heal;
         totals.heal += heal;
-        parts.push(`${arrow.score} → soin ${heal}`);
-        hits.push({ playerId: player.id, score: arrow.score, action: 'heal', amount: heal, target: 'Arbre-Cœur' });
-      } else if (arrow.action === 'nemesis') {
-        const dmg = power * boost;
-        s.nemesis.hp = Math.max(0, s.nemesis.hp - dmg);
-        player.stats.damageNemesis += dmg;
-        totals.nemesis += dmg;
-        parts.push(`${arrow.score} → ${ACTION_LABELS.nemesis} ${dmg}`);
-        hits.push({ playerId: player.id, score: arrow.score, action: 'nemesis', amount: dmg, target: nemesisName(s) });
+        effects.push({ action, points, amount: heal, target: 'Arbre-Cœur' });
+      } else if (action === 'nemesis') {
+        s.nemesis.hp = Math.max(0, s.nemesis.hp - amount);
+        player.stats.damageNemesis += amount;
+        totals.nemesis += amount;
+        effects.push({ action, points, amount, target: nemesisName(s) });
       } else {
-        const dmg = power * boost;
-        const { dealt, redirected, target, killed } = damageMinions(ctx, arrow.action, dmg, player);
-        hits.push({
-          playerId: player.id,
-          score: arrow.score,
-          action: redirected ? 'nemesis' : arrow.action,
+        const { dealt, redirected, target, killed } = damageMinions(ctx, action, amount, player);
+        totals[redirected ? 'nemesis' : action] += dealt;
+        effects.push({
+          action: redirected ? 'nemesis' : action,
+          points,
           amount: dealt,
           target,
           ...(killed.length ? { killed: killed.join(', ') } : {}),
         });
-        if (redirected) {
-          totals.nemesis += dealt;
-          parts.push(`${arrow.score} → ${ACTION_LABELS.nemesis} ${dealt} (rien à viser)`);
-        } else {
-          totals[arrow.action] += dealt;
-          parts.push(`${arrow.score} → ${ACTION_LABELS[arrow.action]} ${dealt}`);
-        }
       }
     }
+    results.push({ playerId: player.id, arrows, pool, effects });
     player.stats.volleys += 1;
     player.stats.bestVolley = Math.max(player.stats.bestVolley, volleyScore);
-    ctx.line(`${CLASSES[player.classId].emoji} ${player.name} : ${parts.join(', ') || 'aucune flèche'}.`, 'good');
+    const scores = arrows.map(arrowLabel).join(' ');
+    const parts = effects.map((e) => `${ACTION_LABELS[e.action]} ${e.action === 'heal' ? '+' : ''}${e.amount}`);
+    ctx.line(`${CLASSES[player.classId].emoji} ${player.name} : ${scores} → ${pool} pts${parts.length ? ` (${parts.join(', ')})` : ''}.`, 'good');
   }
   s.wolfBoost = 0;
   const summary: string[] = [];
@@ -560,10 +573,13 @@ function resolve(state: GameState): GameState {
   ctx.line(`Bilan : ${summary.join(', ') || 'aucun effet'}.`, 'good');
   s.phase = { kind: 'turn' };
   if (checkEnd(ctx)) return s;
+  const crits = results.reduce((n, r) => n + r.arrows.filter((a) => a.x).length, 0);
   const narration =
-    totals.nemesis > 0
-      ? `Les flèches sifflent et ${nemesisName(s)} gémit sous les coups. Il lui reste ${s.nemesis.hp} PV.`
-      : 'Les flèches se plantent dans la Corruption. La forêt respire un peu mieux.';
+    crits > 0
+      ? `${crits > 1 ? `${crits} coups critiques` : 'Un coup critique'} en plein cœur ! ${nemesisName(s)} chancelle, il lui reste ${s.nemesis.hp} PV.`
+      : totals.nemesis > 0
+        ? `Les flèches sifflent et ${nemesisName(s)} gémit sous les coups. Il lui reste ${s.nemesis.hp} PV.`
+        : 'Les flèches se plantent dans la Corruption. La forêt respire un peu mieux.';
   ctx.event('resolve', `Volée ${phase.volley} résolue`, narration, 'good');
   return s;
 }
@@ -642,7 +658,7 @@ export function reduce(state: GameState, action: GameAction): GameState {
     case 'advance':
       return advance(state);
     case 'submit':
-      return submit(state, action.playerId, action.arrows);
+      return submit(state, action.playerId, action.submission);
     case 'resolve':
       return resolve(state);
     case 'power':

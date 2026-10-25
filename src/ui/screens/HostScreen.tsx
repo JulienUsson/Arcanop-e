@@ -1,4 +1,5 @@
 import { useState, useSyncExternalStore } from 'react';
+import { suggestion } from '../../game/advice';
 import { CLASSES } from '../../game/classes';
 import { nextCardLabel } from '../../game/engine';
 import type { HostSession } from '../../net/host';
@@ -156,11 +157,13 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
                 classId={selectedPlayer.classId}
                 coef={selectedPlayer.coef}
                 arrowsPerVolley={state.config.arrowsPerVolley}
+                boost={state.wolfBoost > 0 ? 2 : 1}
+                suggested={suggestion(state, selectedPlayer.id)?.action}
                 submitted={phase.kind === 'volley' ? phase.submissions[selectedPlayer.id] : undefined}
                 canSubmit={phase.kind === 'volley'}
                 blockedReason="La saisie s’ouvre quand une carte Volée est tirée."
-                onSubmit={(arrows) => {
-                  session.dispatch({ type: 'submit', playerId: selectedPlayer.id, arrows });
+                onSubmit={(submission) => {
+                  session.dispatch({ type: 'submit', playerId: selectedPlayer.id, submission });
                   const next = freePlayers.find((p) => p.id !== selectedPlayer.id && phase.kind === 'volley' && !phase.submissions[p.id]);
                   if (next) setTimeout(() => setSelected(next.id), 600);
                 }}

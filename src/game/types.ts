@@ -2,14 +2,18 @@ export type Action = 'nemesis' | 'creatures' | 'roots' | 'heal';
 
 export type ClassId = 'loup' | 'ours' | 'hibou' | 'cerf';
 
-export type Quadrant = 0 | 1 | 2 | 3;
-
 export type Difficulty = 'facile' | 'normal' | 'difficile';
 
 export interface Arrow {
   score: number;
-  action: Action | null;
-  quadrant: Quadrant | null;
+  x: boolean;
+}
+
+export type Allocation = Partial<Record<Action, number>>;
+
+export interface Submission {
+  arrows: Arrow[];
+  allocation: Allocation;
 }
 
 export interface PlayerConfig {
@@ -32,6 +36,7 @@ export interface PlayerStats {
   totalScore: number;
   yellows: number;
   tens: number;
+  crits: number;
   damageNemesis: number;
   damageCreatures: number;
   damageRoots: number;
@@ -129,7 +134,7 @@ export type VolleyStep = 'council' | 'shoot' | 'input';
 export type Phase =
   | { kind: 'lobby' }
   | { kind: 'turn' }
-  | { kind: 'volley'; volley: number; step: VolleyStep; submissions: Record<string, Arrow[]> }
+  | { kind: 'volley'; volley: number; step: VolleyStep; submissions: Record<string, Submission> }
   | { kind: 'over'; result: 'victory' | 'defeat'; reason: string };
 
 export type LogTone = 'info' | 'good' | 'bad' | 'power';
@@ -142,13 +147,19 @@ export interface LogEntry {
 
 export type EventKind = 'intro' | 'volley' | 'nemesis' | 'resolve' | 'round' | 'power' | 'victory' | 'defeat';
 
-export interface Hit {
-  playerId: string;
-  score: number;
-  action: Action | null;
+export interface Effect {
+  action: Action;
+  points: number;
   amount: number;
   target: string;
   killed?: string;
+}
+
+export interface VolleyResult {
+  playerId: string;
+  arrows: Arrow[];
+  pool: number;
+  effects: Effect[];
 }
 
 export interface GameEvent {
@@ -160,7 +171,7 @@ export interface GameEvent {
   tone: LogTone;
   cardId?: string;
   playerId?: string;
-  hits?: Hit[];
+  results?: VolleyResult[];
   boosted?: boolean;
 }
 
@@ -198,7 +209,7 @@ export type GameAction =
   | { type: 'start' }
   | { type: 'draw' }
   | { type: 'advance' }
-  | { type: 'submit'; playerId: string; arrows: Arrow[] }
+  | { type: 'submit'; playerId: string; submission: Submission }
   | { type: 'resolve' }
   | { type: 'power'; playerId: string; targetUid?: string }
   | { type: 'focus'; kind: 'creature' | 'root'; uid: string | null };

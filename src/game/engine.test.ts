@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createGame, powerAvailability, reduce, treeDamageFactor } from './engine';
-import { CLASSES } from './classes';
+import { createGame, powerAvailability, reduce, treeDamageFactor, volleyPool } from './engine';
+import { availableActions } from './classes';
 import { GAUGE_MAX } from './difficulty';
-import type { Arrow, GameConfig, GameState } from './types';
+import type { Allocation, Arrow, GameConfig, GameState, Submission } from './types';
 
 const config: GameConfig = {
   nemesisId: 'mordelune',
@@ -32,12 +32,13 @@ function drawUntil(state: GameState, kind: 'volley' | 'nemesis'): GameState {
   throw new Error('carte introuvable');
 }
 
-const shot = (score: number, action: Arrow['action']): Arrow => ({ score, action, quadrant: 0 });
+const arrow = (score: number | 'X'): Arrow => (score === 'X' ? { score: 10, x: true } : { score, x: false });
+const volley = (scores: (number | 'X')[], allocation: Allocation = {}): Submission => ({ arrows: scores.map(arrow), allocation });
 
 describe('moteur', () => {
   it('prépare une partie mise à l’échelle', () => {
     const s = createGame(config, 1, 'g');
-    expect(s.nemesis.hp).toBe(70 * 12);
+    expect(s.nemesis.hp).toBe(88 * 12);
     expect(s.tree.hp).toBe(45);
     expect(s.wrathDeck).toHaveLength(13);
     expect(s.phase.kind).toBe('lobby');
@@ -50,18 +51,49 @@ describe('moteur', () => {
     expect(s.turnDeck.filter((c) => c === 'nemesis')).toHaveLength(2);
   });
 
-  it('applique les flèches et remplit les jauges', () => {
+  it('additionne la volée, applique la spécialité et remplit les jauges', () => {
     let s = drawUntil(started(), 'volley');
-    expect(s.phase.kind).toBe('volley');
     const hp = s.nemesis.hp;
-    s = reduce(s, { type: 'submit', playerId: 'a', arrows: [shot(10, 'nemesis'), shot(9, 'nemesis'), shot(0, null)] });
+    s = reduce(s, { type: 'submit', playerId: 'a', submission: volley([10, 9, 0], { nemesis: 19 }) });
     s = reduce(s, { type: 'resolve' });
     expect(s.phase.kind).toBe('turn');
-    expect(s.nemesis.hp).toBe(hp - 19);
+    expect(s.nemesis.hp).toBe(hp - 29);
     const alice = s.players[0];
     expect(alice.gauge).toBe(2);
     expect(alice.stats.misses).toBe(1);
-    expect(alice.stats.damageNemesis).toBe(19);
+    expect(alice.stats.totalScore).toBe(19);
+    expect(alice.stats.damageNemesis).toBe(29);
+  });
+
+  it('compte le X comme un coup critique', () => {
+    expect(volleyPool([arrow('X'), arrow(7)], 1)).toBe(27);
+    expect(volleyPool([arrow('X'), arrow(7)], 1.5)).toBe(41);
+    let s = drawUntil(started(), 'volley');
+    s = reduce(s, { type: 'submit', playerId: 'a', submission: volley(['X', 7, 3]) });
+    s = reduce(s, { type: 'resolve' });
+    const alice = s.players[0];
+    expect(alice.stats).toMatchObject({ crits: 1, tens: 1, totalScore: 20, yellows: 1 });
+    expect(s.lastEvent?.narration).toContain('coup critique');
+  });
+
+  it('répartit les points entre les actions disponibles', () => {
+    let s = drawUntil(started(), 'volley');
+    s = { ...s, tree: { hp: 20, maxHp: 45 } };
+    const hp = s.nemesis.hp;
+    s = reduce(s, { type: 'submit', playerId: 'b', submission: volley([8, 8], { nemesis: 6, heal: 10, roots: 5 }) });
+    expect(s.phase.kind === 'volley' && s.phase.submissions.b.allocation).toEqual({ nemesis: 6, heal: 10 });
+    s = reduce(s, { type: 'resolve' });
+    expect(s.nemesis.hp).toBe(hp - 6);
+    expect(s.tree.hp).toBe(25);
+  });
+
+  it('reporte les points non répartis sur la spécialité', () => {
+    let s = drawUntil(started(), 'volley');
+    const hp = s.nemesis.hp;
+    s = reduce(s, { type: 'submit', playerId: 'a', submission: volley([5, 5], { creatures: 4 }) });
+    expect(s.phase.kind === 'volley' && s.phase.submissions.a.allocation).toEqual({ creatures: 4, nemesis: 6 });
+    s = reduce(s, { type: 'resolve' });
+    expect(s.nemesis.hp).toBe(hp - 4 - 9);
   });
 
   it('guide la volée du conseil à la saisie', () => {
@@ -75,31 +107,35 @@ describe('moteur', () => {
     expect(reduce(s, { type: 'advance' })).toBe(s);
   });
 
-  it('détaille chaque flèche dans l’événement de résolution', () => {
+  it('détaille chaque volée dans l’événement de résolution', () => {
     let s = drawUntil(started(), 'volley');
-    s = reduce(s, { type: 'submit', playerId: 'a', arrows: [shot(9, 'nemesis'), shot(0, null)] });
+    s = reduce(s, { type: 'submit', playerId: 'a', submission: volley([9, 0], { nemesis: 9 }) });
     s = reduce(s, { type: 'resolve' });
     expect(s.lastEvent?.kind).toBe('resolve');
-    expect(s.lastEvent?.hits).toEqual([
-      { playerId: 'a', score: 9, action: 'nemesis', amount: 9, target: 'Mordelune' },
-      { playerId: 'a', score: 0, action: null, amount: 0, target: '' },
+    expect(s.lastEvent?.results).toEqual([
+      {
+        playerId: 'a',
+        arrows: [arrow(9), arrow(0)],
+        pool: 9,
+        effects: [{ action: 'nemesis', points: 9, amount: 14, target: 'Mordelune' }],
+      },
     ]);
   });
 
   it('applique le coefficient et le facteur de soin', () => {
     let s = drawUntil(started(), 'volley');
     s = { ...s, tree: { hp: 10, maxHp: 45 } };
-    s = reduce(s, { type: 'submit', playerId: 'd', arrows: [shot(8, 'heal')] });
+    s = reduce(s, { type: 'submit', playerId: 'd', submission: volley([8], { heal: 12 }) });
     s = reduce(s, { type: 'resolve' });
-    expect(s.tree.hp).toBe(16);
+    expect(s.tree.hp).toBe(19);
   });
 
   it('redirige vers la Némésis faute de créature', () => {
     let s = drawUntil(started(), 'volley');
     const hp = s.nemesis.hp;
-    s = reduce(s, { type: 'submit', playerId: 'b', arrows: [shot(7, 'creatures')] });
+    s = reduce(s, { type: 'submit', playerId: 'b', submission: volley([7], { creatures: 7 }) });
     s = reduce(s, { type: 'resolve' });
-    expect(s.nemesis.hp).toBe(hp - 7);
+    expect(s.nemesis.hp).toBe(hp - 11);
   });
 
   it('frappe d’abord la créature ciblée puis déborde', () => {
@@ -110,9 +146,9 @@ describe('moteur', () => {
       { uid: 'c2', cardId: 'corbeau-cendre', hp: 12, maxHp: 12 },
     ];
     s = reduce(s, { type: 'focus', kind: 'creature', uid: 'c2' });
-    s = reduce(s, { type: 'submit', playerId: 'b', arrows: [shot(10, 'creatures'), shot(4, 'creatures')] });
+    s = reduce(s, { type: 'submit', playerId: 'b', submission: volley([6, 4], { creatures: 10 }) });
     s = reduce(s, { type: 'resolve' });
-    expect(s.creatures).toEqual([{ uid: 'c1', cardId: 'loup-ronce', hp: 3, maxHp: 18 }]);
+    expect(s.creatures).toEqual([{ uid: 'c1', cardId: 'loup-ronce', hp: 2, maxHp: 18 }]);
   });
 
   it('active les pouvoirs', () => {
@@ -132,9 +168,9 @@ describe('moteur', () => {
     s = reduce(s, { type: 'power', playerId: 'd' });
     expect(s.tree.hp).toBe(35);
     const hp = s.nemesis.hp;
-    s = reduce(s, { type: 'submit', playerId: 'a', arrows: [shot(8, 'nemesis')] });
+    s = reduce(s, { type: 'submit', playerId: 'a', submission: volley([8], { nemesis: 8 }) });
     s = reduce(s, { type: 'resolve' });
-    expect(s.nemesis.hp).toBe(hp - 16);
+    expect(s.nemesis.hp).toBe(hp - 24);
     expect(s.wolfBoost).toBe(0);
   });
 
@@ -170,7 +206,7 @@ describe('moteur', () => {
   it('gagne quand la Némésis tombe', () => {
     let s = drawUntil(started(), 'volley');
     s = { ...s, nemesis: { hp: 5, maxHp: 384 } };
-    s = reduce(s, { type: 'submit', playerId: 'a', arrows: [shot(6, 'nemesis')] });
+    s = reduce(s, { type: 'submit', playerId: 'a', submission: volley([6]) });
     s = reduce(s, { type: 'resolve' });
     expect(s.phase).toMatchObject({ kind: 'over', result: 'victory' });
   });
@@ -183,9 +219,9 @@ describe('moteur', () => {
         if (s.phase.kind === 'turn') s = reduce(s, { type: 'draw' });
         else if (s.phase.kind === 'volley') {
           for (const p of s.players) {
-            const actions = CLASSES[p.classId].quadrants;
-            const arrows = [0, 1, 2].map((i) => shot(((seed * 7 + i * 3) % 10) + 1, actions[(seed + i) % 4]));
-            s = reduce(s, { type: 'submit', playerId: p.id, arrows });
+            const actions = availableActions(p.classId);
+            const scores = [0, 1, 2].map((i) => ((seed * 7 + i * 3) % 11) as number);
+            s = reduce(s, { type: 'submit', playerId: p.id, submission: volley(scores, { [actions[seed % 3]]: 10 }) });
           }
           s = reduce(s, { type: 'resolve' });
         }
