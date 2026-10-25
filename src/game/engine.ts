@@ -9,7 +9,7 @@ import {
   FURY_TREE_STEP,
   GAUGE_MAX,
   BOT_CRIT_CHANCE,
-  BOT_MEAN,
+  BOT_MEANS,
   BOT_SPREAD,
   HEAL_FACTOR,
   SIX_ARROWS_HP_FACTOR,
@@ -425,9 +425,10 @@ function gaussian(ctx: Ctx): number {
   return Math.sqrt(-2 * Math.log(ctx.random() || 1e-9)) * Math.cos(2 * Math.PI * ctx.random());
 }
 
-function botShots(ctx: Ctx): Shot[] {
+function botShots(ctx: Ctx, player: Player): Shot[] {
+  const mean = BOT_MEANS[player.skill ?? 'aguerri'];
   return Array.from({ length: ctx.state.config.arrowsPerVolley }, () => {
-    const score = Math.max(0, Math.min(10, Math.round(BOT_MEAN + gaussian(ctx) * BOT_SPREAD)));
+    const score = Math.max(0, Math.min(10, Math.round(mean + gaussian(ctx) * BOT_SPREAD)));
     return { score, x: score === 10 && ctx.random() < BOT_CRIT_CHANCE };
   });
 }
@@ -436,7 +437,7 @@ function beginVolley(ctx: Ctx) {
   const s = ctx.state;
   s.volleyCount += 1;
   const bots: Record<string, Shot[]> = {};
-  for (const p of s.players) if (p.bot) bots[p.id] = botShots(ctx);
+  for (const p of s.players) if (p.bot) bots[p.id] = botShots(ctx, p);
   s.phase = { kind: 'volley', volley: s.volleyCount, step: 'council', submissions: {}, bots };
   ctx.line(`Volée ${s.volleyCount} : conseil, tir, puis saisie des impacts.`);
 }

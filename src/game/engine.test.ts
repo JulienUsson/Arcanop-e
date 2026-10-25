@@ -53,6 +53,27 @@ describe('moteur', () => {
     expect(s.nemesis.hp).toBe(1600);
   });
 
+  it('fait tirer les compagnons selon leur niveau', () => {
+    let n = 0;
+    const team = withBots(config.players.slice(0, 1), () => String(n++));
+    const skills = ['novice', 'aguerri', 'veteran'] as const;
+    const players = team.map((p) => (p.bot ? { ...p, skill: skills[team.indexOf(p) - 1] } : p));
+    const totals = [0, 0, 0];
+    for (let seed = 1; seed <= 300; seed++) {
+      const s = reduce(createGame({ ...config, players }, seed, 'g'), { type: 'start' });
+      if (s.phase.kind !== 'volley') throw new Error('volée attendue');
+      const phase = s.phase;
+      players.slice(1).forEach((p, i) => (totals[i] += phase.bots[p.id].reduce((sum, a) => sum + a.score, 0)));
+    }
+    const means = totals.map((t) => t / 900);
+    expect(means[0]).toBeGreaterThan(6.7);
+    expect(means[0]).toBeLessThan(7.3);
+    expect(means[1]).toBeGreaterThan(7.7);
+    expect(means[1]).toBeLessThan(8.2);
+    expect(means[2]).toBeGreaterThan(8.5);
+    expect(means[2]).toBeLessThan(9.1);
+  });
+
   it('adapte la Némésis au format et aux grandes équipes', () => {
     expect(createGame({ ...config, arrowsPerVolley: 6 }, 1, 'g').nemesis.hp).toBe(Math.floor(1600 * 0.9));
     const eight = [...config.players, ...config.players.map((p) => ({ ...p, id: `${p.id}2` }))];

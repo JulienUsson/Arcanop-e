@@ -117,7 +117,8 @@ export function Rules({ onBack }: { onBack: () => void }) {
         </ol>
         <p>
           🤖 <strong>Compagnons</strong> : la partie est équilibrée pour quatre Gardiens. À moins de quatre, des compagnons complètent
-          l’équipe. L’appli tire leurs flèches, l’hôte les répartit entre leurs actions comme pour un archer.
+          l’équipe. L’appli tire leurs flèches selon leur niveau (Novice, Aguerri ou Vétéran), l’hôte les répartit entre leurs actions comme pour
+          un archer.
         </p>
         <p>
           Victoire si la Némésis tombe à 0 PV. Défaite si l’Arbre-Cœur tombe à 0 PV.
