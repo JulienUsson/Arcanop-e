@@ -1,5 +1,5 @@
 import { ACTION_ICONS, ACTION_LABELS, actionMultiplier, CLASSES } from './classes';
-import { describeCard, powerAvailability } from './engine';
+import { describeCard, nextFury, powerAvailability } from './engine';
 import { getCard, getNemesis } from './nemesis';
 import type { Action, GameState } from './types';
 
@@ -62,8 +62,17 @@ export function councilAdvice(state: GameState): Advice[] {
       text: `Encore ${state.turnDeck.length} carte${state.turnDeck.length > 1 ? 's' : ''} dans cette manche, dont ${nemesisTurns} tour${nemesisTurns > 1 ? 's' : ''} de la Némésis.`,
     });
   }
-  out.push({ icon: '📜', text: `Paquet de colère : ${state.wrathDeck.length} carte${state.wrathDeck.length > 1 ? 's' : ''} avant l’épuisement.` });
-  return out;
+  if (state.wrathDeck.length > 0) {
+    out.push({ icon: '📜', text: `Paquet de colère : ${state.wrathDeck.length} carte${state.wrathDeck.length > 1 ? 's' : ''} avant sa Furie finale.` });
+  } else {
+    const fury = nextFury(state);
+    out.push({
+      icon: '🔥',
+      urgent: true,
+      text: `Furie finale : à chaque tour de Némésis, ${fury.tree} dégâts à l’Arbre-Cœur et ${fury.archers} à chaque Gardien, de plus en plus. Achevez-la vite !`,
+    });
+  }
+  return [...out.filter((a) => a.urgent), ...out.filter((a) => !a.urgent)];
 }
 
 export interface Suggestion {

@@ -110,11 +110,13 @@ export function Rules({ onBack }: { onBack: () => void }) {
           <li>Fin de manche : chaque créature agit et le compte à rebours des racines diminue.</li>
         </ol>
         <p>
-          Victoire si la Némésis tombe à 0 PV. Défaite si l’Arbre-Cœur tombe à 0 PV ou si la Némésis doit jouer alors que son paquet de
-          colère est vide : la carte qui épuise le paquet est jouée normalement, mais au tour de Némésis suivant, la Corruption l’emporte.
-          Les créatures et racines déjà en jeu continuent d’agir jusque-là.
+          Victoire si la Némésis tombe à 0 PV. Défaite si l’Arbre-Cœur tombe à 0 PV.
         </p>
-        <p className="hint">Tous les multiplicateurs (coefficient, spécialité, soin, à terre, Meute) sont arrondis à l’entier inférieur.</p>
+        <p>
+          🔥 <strong>Furie finale</strong> : quand le paquet de colère est vide, chaque carte Némésis déclenche un Déchaînement qui frappe
+          l’Arbre-Cœur et tous les Gardiens, plus fort à chaque fois. Il faut l’achever avant que l’Arbre ne cède.
+        </p>
+        <p className="hint">Tous les multiplicateurs (niveau, spécialité, soin, à terre, Meute) sont arrondis à l’entier inférieur.</p>
       </section>
       <button className="primary big wide" onClick={onBack}>
         Retour

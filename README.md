@@ -76,7 +76,10 @@ Chaque archer tire ses flèches (3 par défaut) sur un blason classique, puis sa
 3. Némésis : une carte du paquet de colère — **Attaque** (effet immédiat), **Créature** (reste en jeu et agit à chaque fin de manche), **Racine** (compte à rebours, éclot en fin de manche si elle n'est pas détruite).
 4. Une fois le paquet d'ordre épuisé, l'hôte termine la manche : les créatures agissent, les racines décomptent.
 
-Victoire quand la Némésis tombe à 0 PV. Défaite quand l'Arbre-Cœur tombe à 0 PV, ou quand la Némésis doit jouer alors que son paquet de colère est vide : la dernière carte du paquet est jouée normalement, les créatures et racines en jeu continuent d'agir, et c'est au tour de Némésis suivant que la Corruption l'emporte. Le paquet sert donc de chronomètre.
+Victoire quand la Némésis tombe à 0 PV. Défaite quand l'Arbre-Cœur tombe à 0 PV.
+
+### Furie finale
+Quand la Némésis doit jouer alors que son paquet de colère est vide, elle entre en **Furie finale** : chaque carte Némésis devient un Déchaînement qui inflige 10 dégâts à l'Arbre-Cœur et 3 à chaque Gardien, puis +6 et +1 à chaque Déchaînement suivant, avant les multiplicateurs de difficulté et de mise à l'échelle. Les créatures et racines en jeu continuent d'agir. La partie n'est plus perdue d'office à l'épuisement du paquet : l'équipe garde une dernière chance d'abattre la Némésis, mais la Furie s'emballe vite et finit par abattre l'Arbre-Cœur. Le paquet reste donc un chronomètre, avec une fin dramatique plutôt qu'un couperet. Le tableau de combat annonce « Furie imminente » quand le paquet est vide, la fiche de la Némésis affiche le prochain Déchaînement et le conseil le signale en priorité.
 
 ### Difficultés
 
@@ -96,7 +99,7 @@ Les PV de la Némésis sont proportionnels au nombre de flèches tirées par vol
 Le niveau de l'archer sert de handicap : un débutant en Facile (cordon favorable, ×1,2) pèse autant qu'un tireur confirmé en Difficile (×0,8), l'équipe reste mixte.
 
 ### Équilibrage
-`BALANCE=1 npx vitest run src/game/balance.test.ts` simule des centaines de parties avec des archers virtuels (score moyen 5, 6,5 ou 8, un 10 sur trois est un X) qui envoient toutes leurs flèches sur l'action la plus utile. Repères actuels pour quatre archers, une par classe, 3 flèches : Facile gagné presque toujours ; Normal ~99 % à 6,5 de moyenne et ~40 % à 5, en 12 à 18 volées ; Difficile ~20 % à 6,5 et ~95 % à 8. La simulation compte aussi les archers mis à terre : rarement en Normal quand l'équipe soigne, 1 à 2 par partie en Difficile. Les archers virtuels jouent de façon optimale ; une vraie équipe fait moins bien.
+`BALANCE=1 npx vitest run src/game/balance.test.ts` simule des centaines de parties avec des archers virtuels (score moyen 5, 6,5 ou 8, un 10 sur trois est un X) qui envoient toutes leurs flèches sur l'action la plus utile. Repères actuels pour quatre archers, une par classe, 3 flèches : Facile gagné presque toujours ; Normal ~99 % à 6,5 de moyenne et ~65 % à 5 (presque toujours après être entré en Furie finale), en 13 à 19 volées ; Difficile ~30 % à 6,5 et ~95 % à 8. La simulation compte aussi les archers mis à terre : rarement en Normal quand l'équipe soigne, 2 à 3 par partie en Difficile quand l'équipe peine. Les archers virtuels jouent de façon optimale ; une vraie équipe fait moins bien.
 
 ## Architecture
 

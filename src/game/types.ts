@@ -159,7 +159,7 @@ export interface LogEntry {
   text: string;
 }
 
-export type EventKind = 'intro' | 'volley' | 'nemesis' | 'resolve' | 'round' | 'power' | 'victory' | 'defeat';
+export type EventKind = 'intro' | 'volley' | 'nemesis' | 'fury' | 'resolve' | 'round' | 'power' | 'victory' | 'defeat';
 
 export interface Effect {
   action: Action;
@@ -187,6 +187,7 @@ export interface GameEvent {
   playerId?: string;
   results?: VolleyResult[];
   boosted?: boolean;
+  fury?: number;
 }
 
 export interface GameState {
@@ -207,6 +208,7 @@ export interface GameState {
   wrathDiscard: string[];
   revealed: boolean;
   wolfBoost: number;
+  fury: number;
   uidCounter: number;
   eventCounter: number;
   lastEvent: GameEvent | null;

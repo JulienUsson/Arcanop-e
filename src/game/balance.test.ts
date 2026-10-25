@@ -65,12 +65,12 @@ function simulate(difficulty: Difficulty, classes: ClassId[], mean: number, game
       s = reduce(s, { type: 'resolve' });
     }
     if (s.phase.result === 'victory') wins++;
-    if (s.phase.reason.includes('paquet')) deckOuts++;
+    if (s.fury > 0) deckOuts++;
     volleys += s.volleyCount;
     knockouts += s.players.reduce((n, p) => n + p.stats.knockouts, 0);
   }
   const rate = ((wins / games) * 100).toFixed(0);
-  return `${difficulty.padEnd(9)} ${classes.join(',').padEnd(34)} moy ${mean} × ${arrows} : ${rate}% victoires, ${deckOuts} paquets épuisés, ${(volleys / games).toFixed(1)} volées, ${(knockouts / games).toFixed(1)} archers à terre`;
+  return `${difficulty.padEnd(9)} ${classes.join(',').padEnd(34)} moy ${mean} × ${arrows} : ${rate}% victoires, ${deckOuts} en Furie, ${(volleys / games).toFixed(1)} volées, ${(knockouts / games).toFixed(1)} archers à terre`;
 }
 
 it.skipIf(!process.env.BALANCE)('équilibrage', () => {
@@ -82,4 +82,4 @@ it.skipIf(!process.env.BALANCE)('équilibrage', () => {
     lines.push(simulate(difficulty, ['hibou'], 6.5, 300));
   }
   console.log(lines.join('\n'));
-});
+}, 120_000);

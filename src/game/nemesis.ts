@@ -13,7 +13,7 @@ export const MORDELUNE: NemesisDef = {
     'Les créatures agissent à chaque fin de manche : plus tôt elles tombent, moins elles coûtent.',
     'Certaines de ses attaques et créatures visent les Gardiens : un archer à terre ne tire plus qu’à moitié, soignez-le.',
     'La Mère-Sève et la Racine Sanguine la soignent : ne les laissez pas effacer vos efforts.',
-    'Si son paquet de colère s’épuise, la forêt est perdue : gardez un œil sur le compteur.',
+    'Quand son paquet de colère est vide, elle entre en Furie finale : chaque tour de Némésis devient un Déchaînement de plus en plus violent contre l’Arbre-Cœur et tous les Gardiens.',
   ],
   intro:
     'Au cœur de la nuit, une ronce noire a percé le sol de la Lisière. Mordelune s’éveille, et sa Corruption rampe vers l’Arbre-Cœur. Gardiens, appelez vos esprits : la forêt n’a plus que vous.',
