@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { councilAdvice, describeSuggestion, suggestion } from '../../game/advice';
+import { ARCHER_LEVELS } from '../../game/classes';
 import type { GameState } from '../../game/types';
 
 interface Props {
@@ -43,6 +44,7 @@ function texts(state: GameState, role: 'host' | 'guest', playerId?: string | nul
       : { title: 'Révélez la prochaine carte', text: 'Volée : les archers tirent. Némésis : elle joue une carte de colère.' };
   }
   if (phase.kind === 'volley') {
+    const me = state.players.find((p) => p.id === playerId);
     const done = Object.keys(phase.submissions).length;
     const total = state.players.length;
     if (phase.step === 'council') {
@@ -59,7 +61,10 @@ function texts(state: GameState, role: 'host' | 'guest', playerId?: string | nul
     }
     return {
       title: 'Saisie des scores',
-      text: role === 'host' ? `${done}/${total} archers ont saisi leur volée.` : 'Saisissez le score de chaque flèche (cordon : zone inférieure), puis assignez chaque flèche à une action.',
+      text:
+        role === 'host'
+          ? `${done}/${total} archers ont saisi leur volée.`
+          : `Saisissez le score de chaque flèche (cordon : zone ${me && ARCHER_LEVELS[me.level]?.favorableCordon ? 'supérieure' : 'inférieure'}), puis assignez chaque flèche à une action.`,
     };
   }
   return { title: phase.result === 'victory' ? 'Victoire !' : 'Défaite…', text: phase.reason };

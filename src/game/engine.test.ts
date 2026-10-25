@@ -9,10 +9,10 @@ const config: GameConfig = {
   difficulty: 'normal',
   arrowsPerVolley: 3,
   players: [
-    { id: 'a', name: 'Alice', classId: 'loup', coef: 1 },
-    { id: 'b', name: 'Bruno', classId: 'ours', coef: 1 },
-    { id: 'c', name: 'Chloé', classId: 'hibou', coef: 1 },
-    { id: 'd', name: 'David', classId: 'cerf', coef: 1.5 },
+    { id: 'a', name: 'Alice', classId: 'loup', level: 'normal', coef: 1 },
+    { id: 'b', name: 'Bruno', classId: 'ours', level: 'normal', coef: 1 },
+    { id: 'c', name: 'Chloé', classId: 'hibou', level: 'normal', coef: 1 },
+    { id: 'd', name: 'David', classId: 'cerf', level: 'facile', coef: 1.5 },
   ],
 };
 

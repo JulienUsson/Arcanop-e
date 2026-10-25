@@ -4,6 +4,8 @@ export type ClassId = 'loup' | 'ours' | 'hibou' | 'cerf';
 
 export type Difficulty = 'facile' | 'normal' | 'difficile';
 
+export type ArcherLevel = 'facile' | 'normal' | 'difficile';
+
 export interface Arrow {
   score: number;
   x: boolean;
@@ -19,6 +21,7 @@ export interface PlayerConfig {
   id: string;
   name: string;
   classId: ClassId;
+  level: ArcherLevel;
   coef: number;
 }
 

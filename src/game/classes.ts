@@ -1,4 +1,4 @@
-import type { Action, ClassId } from './types';
+import type { Action, ArcherLevel, ClassId } from './types';
 
 export interface ClassDef {
   id: ClassId;
@@ -129,10 +129,27 @@ export function availableActions(classId: ClassId): Action[] {
   return [cls.specialty, ...ACTIONS.filter((a) => a !== cls.specialty && a !== cls.absent)];
 }
 
-export const LEVELS: { label: string; coef: number }[] = [
-  { label: 'Découverte', coef: 1.5 },
-  { label: 'Débutant', coef: 1.3 },
-  { label: 'Confirmé', coef: 1.1 },
-  { label: 'Compétiteur', coef: 1 },
-  { label: 'Expert', coef: 0.8 },
-];
+export interface ArcherLevelDef {
+  id: ArcherLevel;
+  label: string;
+  coef: number;
+  favorableCordon: boolean;
+}
+
+export const ARCHER_LEVELS: Record<ArcherLevel, ArcherLevelDef> = {
+  facile: { id: 'facile', label: 'Facile', coef: 1.2, favorableCordon: true },
+  normal: { id: 'normal', label: 'Normal', coef: 1, favorableCordon: false },
+  difficile: { id: 'difficile', label: 'Difficile', coef: 0.8, favorableCordon: false },
+};
+
+export const ARCHER_LEVEL_IDS: ArcherLevel[] = ['facile', 'normal', 'difficile'];
+
+export function levelFromCoef(coef: number): ArcherLevel {
+  if (coef > 1.05) return 'facile';
+  if (coef < 0.95) return 'difficile';
+  return 'normal';
+}
+
+export function levelText(player: { level: ArcherLevel; coef: number }): string {
+  return `${ARCHER_LEVELS[player.level].label} ×${String(player.coef).replace('.', ',')}`;
+}

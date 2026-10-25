@@ -2,13 +2,17 @@ import { useState } from 'react';
 import { ClassSheet } from '../components/ClassSheet';
 import { Modal } from '../components/Modal';
 import { NemesisSheet } from '../components/NemesisSheet';
-import { CLASS_IDS, CLASSES, LEVELS } from '../../game/classes';
+import { ARCHER_LEVEL_IDS, ARCHER_LEVELS, CLASS_IDS, CLASSES, levelFromCoef } from '../../game/classes';
 import { DIFFICULTIES } from '../../game/difficulty';
 import { MORDELUNE, NEMESES } from '../../game/nemesis';
-import type { ClassId, Difficulty, GameConfig, PlayerConfig } from '../../game/types';
+import type { ArcherLevel, ClassId, Difficulty, GameConfig, PlayerConfig } from '../../game/types';
 
 const SETUP_KEY = 'arcanopee.setup';
 const MAX_PLAYERS = 8;
+
+function newPlayer(index: number, classId: ClassId): PlayerConfig {
+  return { id: newId(), name: `Archer ${index + 1}`, classId, level: 'normal', coef: ARCHER_LEVELS.normal.coef };
+}
 
 function newId(): string {
   return Math.random().toString(36).slice(2, 8);
@@ -19,7 +23,7 @@ function defaultConfig(): GameConfig {
     nemesisId: MORDELUNE.id,
     difficulty: 'normal',
     arrowsPerVolley: 3,
-    players: CLASS_IDS.map((classId, i) => ({ id: newId(), name: `Archer ${i + 1}`, classId, coef: 1 })),
+    players: CLASS_IDS.map((classId, i) => newPlayer(i, classId)),
   };
 }
 
@@ -28,7 +32,13 @@ function loadConfig(): GameConfig {
     const raw = localStorage.getItem(SETUP_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as GameConfig;
-      if (parsed.players?.length) return { ...defaultConfig(), ...parsed };
+      if (parsed.players?.length) {
+        const players = parsed.players.map((p) => {
+          const level: ArcherLevel = ARCHER_LEVELS[p.level] ? p.level : levelFromCoef(p.coef);
+          return { ...p, level, coef: ARCHER_LEVELS[level].coef };
+        });
+        return { ...defaultConfig(), ...parsed, players };
+      }
     }
   } catch {}
   return defaultConfig();
@@ -46,17 +56,17 @@ export function Setup({ onCreate, onBack }: { onCreate: (config: GameConfig) => 
     setConfig((c) => {
       const used = new Set(c.players.map((p) => p.classId));
       const classId: ClassId = CLASS_IDS.find((id) => !used.has(id)) ?? CLASS_IDS[c.players.length % 4];
-      return { ...c, players: [...c.players, { id: newId(), name: `Archer ${c.players.length + 1}`, classId, coef: 1 }] };
+      return { ...c, players: [...c.players, newPlayer(c.players.length, classId)] };
     });
 
   const removePlayer = (id: string) => setConfig((c) => ({ ...c, players: c.players.filter((p) => p.id !== id) }));
 
-  const valid = config.players.length > 0 && config.players.every((p) => p.name.trim() && p.coef > 0);
+  const valid = config.players.length > 0 && config.players.every((p) => p.name.trim());
 
   const create = () => {
     const clean: GameConfig = {
       ...config,
-      players: config.players.map((p) => ({ ...p, name: p.name.trim().slice(0, 24), coef: Math.round(p.coef * 100) / 100 })),
+      players: config.players.map((p) => ({ ...p, name: p.name.trim().slice(0, 24), coef: ARCHER_LEVELS[p.level].coef })),
     };
     localStorage.setItem(SETUP_KEY, JSON.stringify(clean));
     onCreate(clean);
@@ -69,7 +79,6 @@ export function Setup({ onCreate, onBack }: { onCreate: (config: GameConfig) => 
       <section className="panel">
         <div className="panel-title">🏹 Gardiens</div>
         {config.players.map((p) => {
-          const level = LEVELS.find((l) => l.coef === p.coef);
           return (
             <div key={p.id} className="player-row">
               <div className="row">
@@ -100,31 +109,24 @@ export function Setup({ onCreate, onBack }: { onCreate: (config: GameConfig) => 
               <button className="link small-link" onClick={() => setSheet(p.classId)}>
                 📜 Fiche du {CLASSES[p.classId].name} : {CLASSES[p.classId].role.toLowerCase()}, pouvoir « {CLASSES[p.classId].powerName} »
               </button>
-              <div className="row level-row">
-                <select
-                  value={level ? String(level.coef) : 'custom'}
-                  onChange={(e) => e.target.value !== 'custom' && updatePlayer(p.id, { coef: Number(e.target.value) })}
-                  aria-label="Niveau"
-                >
-                  {LEVELS.map((l) => (
-                    <option key={l.label} value={l.coef}>
-                      {l.label} (×{l.coef})
-                    </option>
-                  ))}
-                  {!level && <option value="custom">Personnalisé</option>}
-                </select>
-                <label className="coef">
-                  ×
-                  <input
-                    type="number"
-                    min={0.1}
-                    max={3}
-                    step={0.1}
-                    value={p.coef}
-                    onChange={(e) => updatePlayer(p.id, { coef: Number(e.target.value) })}
-                    aria-label="Coefficient"
-                  />
-                </label>
+              <div className="level-picker" role="radiogroup" aria-label="Niveau">
+                {ARCHER_LEVEL_IDS.map((id) => {
+                  const level = ARCHER_LEVELS[id];
+                  return (
+                    <button
+                      key={id}
+                      role="radio"
+                      aria-checked={p.level === id}
+                      className={`level-chip level-${id}${p.level === id ? ' selected' : ''}`}
+                      onClick={() => updatePlayer(p.id, { level: id, coef: level.coef })}
+                    >
+                      <strong>{level.label}</strong>
+                      <small>
+                        ×{String(level.coef).replace('.', ',')} · cordon {level.favorableCordon ? 'favorable' : 'défavorable'}
+                      </small>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );

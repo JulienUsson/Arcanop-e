@@ -45,8 +45,8 @@ export function ClassSheet({ classId }: { classId: ClassId }) {
         </ul>
         <p className="hint">
           Après chaque volée, assignez chacune de vos flèches à une action (un X vaut {CRIT_POINTS} points). Les flèches assignées à la
-          spécialité comptent ×1,5. Cordon défavorable : une flèche sur la ligne
-          compte pour la zone inférieure.
+          spécialité comptent ×1,5. Une flèche sur le cordon compte pour la zone supérieure au niveau Facile, pour la zone inférieure en
+          Normal et Difficile.
         </p>
       </section>
 

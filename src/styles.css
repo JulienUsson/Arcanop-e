@@ -358,21 +358,6 @@ textarea {
   box-shadow: 0 0 0 1px var(--class-color) inset;
 }
 
-.level-row select {
-  flex: 1;
-}
-
-.coef {
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
-  color: var(--muted);
-}
-
-.coef input {
-  width: 5em;
-}
-
 .choice {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -3664,4 +3649,51 @@ button.danger-solid {
 .target-chip.down {
   border-color: var(--bad);
   color: #ffb3bb;
+}
+
+/* Niveau de l'archer */
+
+.level-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+}
+
+.level-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.4em 0.3em;
+  background: var(--bg-2);
+  text-align: center;
+}
+
+.level-chip small {
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1.2;
+}
+
+.level-chip.selected {
+  border-color: var(--accent);
+  background: rgba(217, 180, 90, 0.16);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+
+.level-chip.level-facile.selected {
+  border-color: #6fcf7c;
+  background: rgba(111, 207, 124, 0.14);
+  box-shadow: 0 0 0 1px #6fcf7c inset;
+}
+
+.level-chip.level-difficile.selected {
+  border-color: #e2606a;
+  background: rgba(226, 96, 106, 0.14);
+  box-shadow: 0 0 0 1px #e2606a inset;
+}
+
+.cordon-rule.favorable {
+  background: rgba(111, 207, 124, 0.12);
+  border-color: rgba(111, 207, 124, 0.5);
 }
