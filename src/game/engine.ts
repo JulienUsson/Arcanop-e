@@ -1,4 +1,4 @@
-import { ACTION_LABELS, ACTIONS, actionMultiplier, CLASSES } from './classes';
+import { ACTION_LABELS, ACTIONS, actionMultiplier, CLASSES, levelFromCoef } from './classes';
 import { CERF_ARCHER_HEAL, CERF_HEAL, DIFFICULTIES, GAUGE_MAX, HEAL_FACTOR, REFERENCE_ARROWS, WEAKENED_FACTOR } from './difficulty';
 import { getCard, getNemesis, ROUND_NARRATIONS, VOLLEY_NARRATIONS } from './nemesis';
 import { nextRandom, shuffle } from './rng';
@@ -785,7 +785,9 @@ export function migrateState(state: GameState): GameState {
   if (state.lastEvent && (!state.lastEvent.kind || 'hits' in state.lastEvent)) state.lastEvent = null;
   if (state.wolfBoost === 1) state.wolfBoost = 2;
   const hp = DIFFICULTIES[state.config.difficulty].archerHp;
+  state.config.players.forEach((p) => (p.level ??= levelFromCoef(p.coef)));
   state.players.forEach((p) => {
+    p.level ??= levelFromCoef(p.coef);
     p.stats.crits ??= 0;
     p.stats.damageTaken ??= 0;
     p.stats.knockouts ??= 0;

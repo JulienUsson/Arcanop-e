@@ -8,8 +8,8 @@ const config: GameConfig = {
   difficulty: 'normal',
   arrowsPerVolley: 3,
   players: [
-    { id: 'h', name: 'Hugo', classId: 'hibou', coef: 1 },
-    { id: 'c', name: 'Clara', classId: 'cerf', coef: 1 },
+    { id: 'h', name: 'Hugo', classId: 'hibou', level: 'normal', coef: 1 },
+    { id: 'c', name: 'Clara', classId: 'cerf', level: 'normal', coef: 1 },
   ],
 };
 

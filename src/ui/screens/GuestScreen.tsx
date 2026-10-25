@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { suggestion } from '../../game/advice';
-import { CLASSES } from '../../game/classes';
+import { ARCHER_LEVELS, CLASSES, levelText } from '../../game/classes';
 import { healOptions, targetOptions } from '../../game/engine';
 import { getNemesis } from '../../game/nemesis';
 import type { ClassId } from '../../game/types';
@@ -164,7 +164,7 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
                     <span>
                       <strong>{p.name}</strong>
                       <small>
-                        {cls.name} · {cls.role} · ×{p.coef}
+                        {cls.name} · {cls.role} · {levelText(p)}
                         {taken && ' · déjà connecté'}
                       </small>
                     </span>
@@ -200,7 +200,7 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
         <div className="me-info">
           <strong>{me.name}</strong>
           <small>
-            {cls.spirit} · ×{me.coef}
+            {cls.spirit} · {levelText(me)}
           </small>
           <HpBar hp={me.hp} max={me.maxHp} tone="archer" />
         </div>
@@ -226,6 +226,7 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
             draftKey={`guest:${volley ? volley.volley : 'next'}:${me.id}`}
             classId={me.classId}
             coef={me.coef}
+            favorableCordon={ARCHER_LEVELS[me.level].favorableCordon}
             arrowsPerVolley={state.config.arrowsPerVolley}
             boost={state.wolfBoost > 0 ? 2 : 1}
             targets={{ creatures: targetOptions(state, 'creatures'), roots: targetOptions(state, 'roots'), heal: healOptions(state) }}

@@ -17,12 +17,13 @@ export function Rules({ onBack }: { onBack: () => void }) {
             Il saisit le score de chaque flèche : X, 10 à 1, ou M pour une flèche hors cible.
           </li>
           <li>Il assigne chaque flèche à une action de son esprit : par exemple le 9 sur la Némésis, le 8 et le 6 sur les racines.</li>
-          <li>Pour chaque action, l’appli additionne ses flèches et applique le coefficient de niveau.</li>
+          <li>Pour chaque action, l’appli additionne ses flèches et applique le multiplicateur de niveau.</li>
         </ol>
         <ul>
           <li>
-            <strong>Cordon défavorable</strong> : une flèche qui touche la ligne entre deux zones compte pour la zone inférieure (sur le
-            cordon du 9 → 8).
+            <strong>Niveau de l’archer</strong> : Facile (cordon favorable, ×1,2), Normal (cordon défavorable, ×1) ou Difficile (cordon
+            défavorable, ×0,8). Cordon favorable : une flèche sur la ligne entre deux zones compte pour la zone supérieure ; défavorable :
+            pour la zone inférieure (sur le cordon du 9 → 8).
           </li>
           <li>
             <strong>X = coup critique</strong> : la flèche vaut {CRIT_POINTS} points au lieu de 10.

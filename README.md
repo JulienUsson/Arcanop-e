@@ -21,7 +21,7 @@ Le workflow `.github/workflows/deploy.yml` publie le build sur GitHub Pages à c
 ## Déroulé d'une séance
 
 1. **Avant d'aller au pas de tir**, chaque archer ouvre l'application et l'installe (« Ajouter à l'écran d'accueil »). Elle fonctionne ensuite entièrement hors ligne.
-2. **L'hôte** choisit « Créer une partie » : archers, classes, niveau (coefficient), Némésis, difficulté, flèches par volée.
+2. **L'hôte** choisit « Créer une partie » : archers, classes, niveau de chaque archer, Némésis, difficulté, flèches par volée.
 3. **Connexion des téléphones** (onglet *Archers*) : l'hôte crée une invitation (QR code), l'archer la scanne depuis « Rejoindre », affiche sa réponse, que l'hôte scanne à son tour. L'archer choisit ensuite son Gardien et découvre sa fiche de classe. Un code texte copiable remplace le QR si une caméra manque.
 4. **Partie** : un guide de phase indique à chacun ce qu'il faut faire (🃏 Carte → 🏹 Conseil & tir → 🎯 Saisie → ⚔️ Résolution). L'hôte tire les cartes d'ordre de tour et fait avancer les étapes ; chaque carte, chaque résolution et chaque pouvoir s'affiche en plein écran sur tous les téléphones.
 5. **Fin de partie** : résumé, distinctions et statistiques par archer.
@@ -32,11 +32,19 @@ Les archers sans téléphone sont saisis par l'hôte (onglet *Saisie*). L'hôte 
 
 ### La volée
 Chaque archer tire ses flèches (3 par défaut) sur un blason classique, puis saisit leurs scores sur son téléphone.
-- **Cordon défavorable** : une flèche qui touche la ligne entre deux zones compte pour la zone inférieure (sur le cordon du 9 → 8). L'écran de saisie le rappelle.
+- **Niveau de l'archer** : trois niveaux seulement.
+
+  | Niveau | Cordon | Multiplicateur |
+  |---|---|---|
+  | Facile | favorable : la zone supérieure compte | ×1,2 |
+  | Normal | défavorable : la zone inférieure compte (cordon du 9 → 8) | ×1 |
+  | Difficile | défavorable | ×0,8 |
+
+  L'écran de saisie rappelle la règle du cordon propre à l'archer.
 - **X = coup critique** : la flèche vaut 15 points au lieu de 10.
 - **Répartition des flèches** : chaque flèche est assignée à une action de l'esprit. Par exemple, sur une volée 6, 8, 9, le Loup peut envoyer le 9 sur la Némésis et le 8 et le 6 sur les racines.
-- **Puissance** : pour chaque action, somme des flèches assignées × coefficient de niveau. Les flèches assignées à la **spécialité** comptent ×1,5. Chaque esprit a une action absente.
-- **Arrondis** : tous les multiplicateurs (coefficient, spécialité, soin, archer à terre, Meute) sont arrondis à l'entier inférieur.
+- **Puissance** : pour chaque action, somme des flèches assignées × multiplicateur de niveau. Les flèches assignées à la **spécialité** comptent ×1,5. Chaque esprit a une action absente.
+- **Arrondis** : tous les multiplicateurs (niveau, spécialité, soin, archer à terre, Meute) sont arrondis à l'entier inférieur.
 - Chaque flèche dans le jaune (9, 10 ou X) ajoute un point de jauge. À 3 points, le pouvoir de l'esprit est activable.
 
 ### Les esprits
@@ -85,7 +93,7 @@ Victoire quand la Némésis tombe à 0 PV. Défaite quand l'Arbre-Cœur tombe à
 ### Mise à l'échelle
 Les PV de la Némésis sont proportionnels au nombre de flèches tirées par volée (archers × flèches). Les PV des créatures et racines, et les soins de la Corruption, suivent le facteur `flèches / 12` (minimum 0,4). Les dégâts à l'Arbre-Cœur suivent `0,5 + 0,5 × facteur`, borné entre 0,6 et 1,5, pour qu'une petite équipe, qui soigne moins, ne soit pas écrasée.
 
-Le coefficient de niveau sert de handicap : un débutant (×1,3 ou ×1,5) pèse autant qu'un tireur confirmé, l'équipe reste mixte.
+Le niveau de l'archer sert de handicap : un débutant en Facile (cordon favorable, ×1,2) pèse autant qu'un tireur confirmé en Difficile (×0,8), l'équipe reste mixte.
 
 ### Équilibrage
 `BALANCE=1 npx vitest run src/game/balance.test.ts` simule des centaines de parties avec des archers virtuels (score moyen 5, 6,5 ou 8, un 10 sur trois est un X) qui envoient toutes leurs flèches sur l'action la plus utile. Repères actuels pour quatre archers, une par classe, 3 flèches : Facile gagné presque toujours ; Normal ~99 % à 6,5 de moyenne et ~40 % à 5, en 12 à 18 volées ; Difficile ~20 % à 6,5 et ~95 % à 8. La simulation compte aussi les archers mis à terre : rarement en Normal quand l'équipe soigne, 1 à 2 par partie en Difficile. Les archers virtuels jouent de façon optimale ; une vraie équipe fait moins bien.
@@ -121,7 +129,7 @@ src/
 
 ### Saisie
 La saisie se fait en deux temps, sans viser de zone sur un dessin de blason :
-1. **Scores** : un pavé de gros boutons aux couleurs des anneaux (X, 10 à 1, M). Le rappel du cordon défavorable reste affiché au-dessus. ↶ retire la dernière flèche.
+1. **Scores** : un pavé de gros boutons aux couleurs des anneaux (X, 10 à 1, M). Le rappel de la règle du cordon de l'archer (favorable ou défavorable selon son niveau) reste affiché au-dessus. ↶ retire la dernière flèche.
 2. **Assignation** : dès la dernière flèche, chaque flèche apparaît sur une ligne avec les actions de l'esprit ; elles sont toutes assignées d'avance à l'action suggérée (ou à la spécialité). Un toucher change l'action d'une flèche, « Tout sur » les assigne toutes d'un coup. Une flèche sur Créatures ou Racines affiche les cibles en jeu (PV, compte à rebours) pour choisir laquelle viser ; il n'y a plus de ciblage collectif pendant le conseil. Le total de chaque action (dégâts, PV) s'affiche en direct, bonus de spécialité et Hurlement de la Meute compris.
 
 Le moteur revalide toute saisie : scores bornés, X seulement sur un 10, aucune action pour une flèche hors cible, flèche assignée à une action absente renvoyée sur la spécialité, cible inconnue remplacée par la cible par défaut au moment de la résolution. Le brouillon de chaque volée survit aux changements d'onglet ; une volée envoyée reste corrigeable jusqu'à la résolution.

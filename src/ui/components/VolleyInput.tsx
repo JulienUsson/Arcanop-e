@@ -10,6 +10,7 @@ interface Props {
   draftKey: string;
   classId: ClassId;
   coef: number;
+  favorableCordon?: boolean;
   arrowsPerVolley: number;
   boost?: number;
   suggested?: Action | null;
@@ -100,6 +101,7 @@ export function VolleyInput({
   draftKey,
   classId,
   coef,
+  favorableCordon = false,
   arrowsPerVolley,
   boost = 1,
   suggested,
@@ -216,8 +218,16 @@ export function VolleyInput({
           </span>
         </div>
         {weakened && <p className="weakened-banner">🩹 À terre : vos flèches comptent moitié jusqu’à ce qu’on vous soigne.</p>}
-        <p className="cordon-rule">
-          <strong>Cordon défavorable :</strong> une flèche qui touche la ligne entre deux zones compte pour la zone inférieure.
+        <p className={`cordon-rule${favorableCordon ? ' favorable' : ''}`}>
+          {favorableCordon ? (
+            <>
+              <strong>Cordon favorable :</strong> une flèche qui touche la ligne entre deux zones compte pour la zone supérieure.
+            </>
+          ) : (
+            <>
+              <strong>Cordon défavorable :</strong> une flèche qui touche la ligne entre deux zones compte pour la zone inférieure.
+            </>
+          )}
         </p>
         <div className="keypad">
           {KEYS.map((key) => (

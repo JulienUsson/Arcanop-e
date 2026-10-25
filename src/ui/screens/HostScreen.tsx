@@ -1,6 +1,6 @@
 import { useState, useSyncExternalStore } from 'react';
 import { suggestion } from '../../game/advice';
-import { CLASSES } from '../../game/classes';
+import { ARCHER_LEVELS, CLASSES, levelText } from '../../game/classes';
 import { healOptions, nextCardLabel, targetOptions } from '../../game/engine';
 import type { HostSession } from '../../net/host';
 import { Board } from '../components/Board';
@@ -168,6 +168,7 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
                 draftKey={`host:${phase.kind === 'volley' ? phase.volley : 'next'}:${selectedPlayer.id}`}
                 classId={selectedPlayer.classId}
                 coef={selectedPlayer.coef}
+                favorableCordon={ARCHER_LEVELS[selectedPlayer.level].favorableCordon}
                 arrowsPerVolley={state.config.arrowsPerVolley}
                 boost={state.wolfBoost > 0 ? 2 : 1}
                 targets={{ creatures: targetOptions(state, 'creatures'), roots: targetOptions(state, 'roots'), heal: healOptions(state) }}
@@ -220,7 +221,7 @@ function ArchersTab({ session, onQuit }: { session: HostSession; onQuit: () => v
             return (
               <li key={p.id}>
                 <span className="who">
-                  {CLASSES[p.classId].emoji} {p.name} <small>×{p.coef}</small>
+                  {CLASSES[p.classId].emoji} {p.name} <small>{levelText(p)}</small>
                 </span>
                 <span className="right">
                   {entry?.status === 'online' && <span className="status online">📱 connecté</span>}

@@ -48,7 +48,7 @@ function simulate(difficulty: Difficulty, classes: ClassId[], mean: number, game
       nemesisId: 'mordelune',
       difficulty,
       arrowsPerVolley: arrows,
-      players: classes.map((classId, i) => ({ id: `p${i}`, name: `P${i}`, classId, coef: 1 })),
+      players: classes.map((classId, i) => ({ id: `p${i}`, name: `P${i}`, classId, level: 'normal', coef: 1 })),
     };
     let s = reduce(createGame(config, game + 1, 'sim'), { type: 'start' });
     while (s.phase.kind !== 'over') {
