@@ -581,11 +581,6 @@ textarea {
   margin-top: 0.3rem;
 }
 
-.minion.focused {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent) inset;
-}
-
 .minion.urgent .countdown {
   background: var(--bad);
   color: #fff;
@@ -1566,14 +1561,6 @@ button.pulse:not(:disabled) {
   right: -6px;
   font-weight: 800;
   border: 1px solid #0008;
-}
-
-.focus-mark {
-  position: absolute;
-  top: -10px;
-  left: -8px;
-  font-size: 1.3rem;
-  animation: nudge 1.2s ease-in-out infinite;
 }
 
 @keyframes summon {
@@ -3530,4 +3517,82 @@ button.danger-solid {
 .tree-legend {
   background: linear-gradient(160deg, rgba(79, 191, 106, 0.16), transparent);
   border-color: #2f6b3d;
+}
+
+/* Choix de la cible */
+
+.minion {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.arrow-row {
+  flex-wrap: wrap;
+}
+
+.target-picker {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding-top: 0.2rem;
+  animation: appear 0.25s ease-out;
+}
+
+.target-label {
+  font-size: 1rem;
+}
+
+.target-chip {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 44px;
+  padding: 0.3rem 0.6rem 0.45rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--action) 35%, transparent);
+  background: #0004;
+  color: var(--muted);
+  overflow: hidden;
+  text-align: left;
+}
+
+.target-name {
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.target-meta {
+  font-size: 0.7rem;
+}
+
+.target-hp {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--action);
+  opacity: 0.8;
+}
+
+.target-chip.selected {
+  color: #fff;
+  border-color: var(--action);
+  background: color-mix(in srgb, var(--action) 32%, #0006);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--action) 40%, transparent);
+  animation: pop 0.3s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+.target-none {
+  flex-basis: 100%;
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.assign-totals small {
+  color: var(--muted);
 }

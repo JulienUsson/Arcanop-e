@@ -49,7 +49,7 @@ function texts(state: GameState, role: 'host' | 'guest', playerId?: string | nul
     if (phase.step === 'council') {
       return {
         title: 'Conseil de guerre',
-        text: role === 'host' ? 'Regardez les menaces ensemble et répartissez les cibles. Touchez une créature ou une racine pour la désigner 🎯.' : 'Écoutez l’équipe et décidez de votre cible.',
+        text: role === 'host' ? 'Regardez les menaces ensemble et décidez qui vise quoi. Chaque archer choisira sa cible en assignant ses flèches.' : 'Écoutez l’équipe et décidez de votre cible.',
       };
     }
     if (phase.step === 'shoot') {

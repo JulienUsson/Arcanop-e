@@ -8,6 +8,7 @@ export interface Arrow {
   score: number;
   x: boolean;
   action: Action | null;
+  target?: string | null;
 }
 
 export interface Submission {
@@ -176,11 +177,6 @@ export interface GameEvent {
   boosted?: boolean;
 }
 
-export interface Focus {
-  creature: string | null;
-  root: string | null;
-}
-
 export interface GameState {
   gameId: string;
   config: GameConfig;
@@ -199,7 +195,6 @@ export interface GameState {
   wrathDiscard: string[];
   revealed: boolean;
   wolfBoost: number;
-  focus: Focus;
   uidCounter: number;
   eventCounter: number;
   lastEvent: GameEvent | null;
@@ -212,5 +207,4 @@ export type GameAction =
   | { type: 'advance' }
   | { type: 'submit'; playerId: string; submission: Submission }
   | { type: 'resolve' }
-  | { type: 'power'; playerId: string; targetUid?: string }
-  | { type: 'focus'; kind: 'creature' | 'root'; uid: string | null };
+  | { type: 'power'; playerId: string; targetUid?: string };

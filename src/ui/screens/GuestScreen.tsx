@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { suggestion } from '../../game/advice';
 import { CLASSES } from '../../game/classes';
+import { targetOptions } from '../../game/engine';
 import { getNemesis } from '../../game/nemesis';
 import type { ClassId } from '../../game/types';
 import type { GuestSession } from '../../net/guest';
@@ -225,6 +226,7 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
             coef={me.coef}
             arrowsPerVolley={state.config.arrowsPerVolley}
             boost={state.wolfBoost > 0 ? 2 : 1}
+            targets={{ creatures: targetOptions(state, 'creatures'), roots: targetOptions(state, 'roots') }}
             suggested={suggestion(state, me.id)?.action}
             submitted={submitted}
             canSubmit={connected && !!volley}
@@ -244,7 +246,7 @@ export function GuestScreen({ guest, onLeave }: { guest: GuestSession; onLeave: 
               </button>
             )}
           </PhaseGuide>
-          <Board state={stage.boardState ?? state} roster={roster} you={you} onFocus={connected ? (kind, uid) => guest.focus(kind, uid) : undefined} />
+          <Board state={stage.boardState ?? state} roster={roster} you={you} />
           <Chronicle log={state.log} />
         </>
       )}

@@ -141,17 +141,46 @@ describe('moteur', () => {
     expect(s.nemesis.hp).toBe(hp - 11);
   });
 
-  it('frappe d’abord la créature ciblée puis déborde', () => {
+  it('frappe la créature visée par la flèche puis déborde', () => {
     let s = drawUntil(started(), 'volley');
     s = structuredClone(s);
     s.creatures = [
       { uid: 'c1', cardId: 'loup-ronce', hp: 5, maxHp: 18 },
       { uid: 'c2', cardId: 'corbeau-cendre', hp: 12, maxHp: 12 },
     ];
-    s = reduce(s, { type: 'focus', kind: 'creature', uid: 'c2' });
-    s = reduce(s, { type: 'submit', playerId: 'b', submission: volley([6, 4], 'creatures') });
+    const arrows = [6, 4].map((score) => ({ ...arrow(score, 'creatures'), target: 'c2' }));
+    s = reduce(s, { type: 'submit', playerId: 'b', submission: { arrows } });
     s = reduce(s, { type: 'resolve' });
     expect(s.creatures).toEqual([{ uid: 'c1', cardId: 'loup-ronce', hp: 2, maxHp: 18 }]);
+  });
+
+  it('vise une cible par flèche et choisit la plus faible par défaut', () => {
+    let s = drawUntil(started(), 'volley');
+    s = structuredClone(s);
+    s.creatures = [
+      { uid: 'c1', cardId: 'loup-ronce', hp: 18, maxHp: 18 },
+      { uid: 'c2', cardId: 'corbeau-cendre', hp: 10, maxHp: 12 },
+    ];
+    s.roots = [
+      { uid: 'r1', cardId: 'racine-etrangleuse', hp: 20, maxHp: 20, countdown: 2 },
+      { uid: 'r2', cardId: 'racine-devorante', hp: 24, maxHp: 24, countdown: 1 },
+    ];
+    s = reduce(s, {
+      type: 'submit',
+      playerId: 'c',
+      submission: {
+        arrows: [
+          { ...arrow(6, 'creatures'), target: 'c1' },
+          { ...arrow(4, 'creatures'), target: 'disparue' },
+          arrow(8, 'roots'),
+        ],
+      },
+    });
+    expect(s.phase.kind === 'volley' && s.phase.submissions.c.arrows.map((a) => a.target)).toEqual(['c1', null, null]);
+    s = reduce(s, { type: 'resolve' });
+    expect(s.creatures.map((c) => c.hp)).toEqual([12, 6]);
+    expect(s.roots.map((r) => r.hp)).toEqual([20, 12]);
+    expect(s.lastEvent?.results?.[0].effects.map((e) => e.target)).toEqual(['Loup-Ronce', 'Corbeau de Cendre', 'Racine Dévorante']);
   });
 
   it('active les pouvoirs', () => {

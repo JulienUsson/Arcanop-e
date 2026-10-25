@@ -7,8 +7,8 @@ const ALL_ACTIONS: Action[] = ['nemesis', 'creatures', 'roots', 'heal'];
 
 const ACTION_HELP: Record<Action, string> = {
   nemesis: 'Dégâts directs à la Némésis.',
-  creatures: 'Dégâts à la créature ciblée 🎯, le surplus passe à la suivante.',
-  roots: 'Dégâts à la racine ciblée, avant qu’elle n’éclose.',
+  creatures: 'Abat les créatures, qui agissent à chaque fin de manche. Cible choisie par flèche.',
+  roots: 'Détruit les racines avant qu’elles n’éclosent. Cible choisie par flèche.',
   heal: 'Rend à l’Arbre-Cœur la moitié des points des flèches assignées.',
 };
 

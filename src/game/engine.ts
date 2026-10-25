@@ -120,7 +120,6 @@ export function createGame(config: GameConfig, seed: number, gameId: string): Ga
     wrathDiscard: [],
     revealed: false,
     wolfBoost: 0,
-    focus: { creature: null, root: null },
     uidCounter: 0,
     eventCounter: 0,
     lastEvent: null,
@@ -363,7 +362,6 @@ function endRound(ctx: Ctx) {
     }
   }
   s.roots = remaining;
-  if (s.focus.root && !s.roots.some((r) => r.uid === s.focus.root)) s.focus.root = null;
   if (checkEnd(ctx)) return;
   const title = `Fin de la manche ${s.round}`;
   newRound(ctx);
@@ -428,13 +426,18 @@ function advance(state: GameState): GameState {
   return { ...state, phase: { ...state.phase, step: NEXT_STEP[state.phase.step] } };
 }
 
-function sanitizeSubmission(submission: Submission, player: Player, max: number): Submission {
+function sanitizeSubmission(state: GameState, submission: Submission, player: Player, max: number): Submission {
   const specialty = CLASSES[player.classId].specialty;
   const arrows: Arrow[] = (Array.isArray(submission?.arrows) ? submission.arrows : []).slice(0, max).map((a) => {
     const score = Math.max(0, Math.min(10, Math.round(Number(a?.score) || 0)));
     if (score === 0) return { score, x: false, action: null };
     const wanted = a?.action as Action;
     const action = ACTIONS.includes(wanted) && actionMultiplier(player.classId, wanted) > 0 ? wanted : specialty;
+    if (action === 'creatures' || action === 'roots') {
+      const list = action === 'creatures' ? state.creatures : state.roots;
+      const target = list.some((m) => m.uid === a?.target) ? (a.target as string) : null;
+      return { score, x: score === 10 && a?.x === true, action, target };
+    }
     return { score, x: score === 10 && a?.x === true, action };
   });
   return { arrows };
@@ -446,11 +449,11 @@ function submit(state: GameState, playerId: string, submission: Submission): Gam
   if (!player) return state;
   const s = clone(state);
   if (s.phase.kind !== 'volley') return state;
-  s.phase.submissions[playerId] = sanitizeSubmission(submission, player, s.config.arrowsPerVolley);
+  s.phase.submissions[playerId] = sanitizeSubmission(s, submission, player, s.config.arrowsPerVolley);
   return s;
 }
 
-type TargetKind = 'creatures' | 'roots';
+export type TargetKind = 'creatures' | 'roots';
 
 interface MinionDamage {
   dealt: number;
@@ -459,7 +462,46 @@ interface MinionDamage {
   killed: string[];
 }
 
-function damageMinions(ctx: Ctx, kind: TargetKind, amount: number, player: Player): MinionDamage {
+export interface TargetOption {
+  uid: string;
+  name: string;
+  hp: number;
+  maxHp: number;
+  countdown?: number;
+}
+
+export function targetOptions(state: GameState, kind: TargetKind): TargetOption[] {
+  if (kind === 'creatures') {
+    return [...state.creatures]
+      .sort((a, b) => a.hp - b.hp)
+      .map((c) => ({ uid: c.uid, name: cardName(state, c.cardId), hp: c.hp, maxHp: c.maxHp }));
+  }
+  return [...state.roots]
+    .sort((a, b) => a.countdown - b.countdown || a.hp - b.hp)
+    .map((r) => ({ uid: r.uid, name: cardName(state, r.cardId), hp: r.hp, maxHp: r.maxHp, countdown: r.countdown }));
+}
+
+export interface ArrowGroup {
+  action: Action;
+  target: string | null;
+  arrows: Arrow[];
+}
+
+export function groupArrows(arrows: Arrow[]): ArrowGroup[] {
+  const groups: ArrowGroup[] = [];
+  for (const action of ACTIONS) {
+    for (const arrow of arrows) {
+      if (arrow.action !== action || arrow.score <= 0) continue;
+      const target = action === 'creatures' || action === 'roots' ? (arrow.target ?? null) : null;
+      const group = groups.find((g) => g.action === action && g.target === target);
+      if (group) group.arrows.push(arrow);
+      else groups.push({ action, target, arrows: [arrow] });
+    }
+  }
+  return groups;
+}
+
+function damageMinions(ctx: Ctx, kind: TargetKind, amount: number, player: Player, targetUid: string | null): MinionDamage {
   const s = ctx.state;
   const list = kind === 'creatures' ? s.creatures : s.roots;
   if (list.length === 0) {
@@ -467,8 +509,9 @@ function damageMinions(ctx: Ctx, kind: TargetKind, amount: number, player: Playe
     player.stats.damageNemesis += amount;
     return { dealt: amount, redirected: true, target: nemesisName(s), killed: [] };
   }
-  const focusUid = kind === 'creatures' ? s.focus.creature : s.focus.root;
-  const ordered = [...list].sort((a, b) => (a.uid === focusUid ? -1 : b.uid === focusUid ? 1 : 0));
+  const priority = targetOptions(s, kind).map((o) => o.uid);
+  const order = targetUid && priority.includes(targetUid) ? [targetUid, ...priority.filter((u) => u !== targetUid)] : priority;
+  const ordered = order.map((uid) => list.find((m) => m.uid === uid)!);
   let remaining = amount;
   let dealt = 0;
   const killed: string[] = [];
@@ -487,11 +530,9 @@ function damageMinions(ctx: Ctx, kind: TargetKind, amount: number, player: Playe
   if (kind === 'creatures') {
     s.creatures = s.creatures.filter((c) => c.hp > 0);
     player.stats.damageCreatures += dealt;
-    if (s.focus.creature && !s.creatures.some((c) => c.uid === s.focus.creature)) s.focus.creature = null;
   } else {
     s.roots = s.roots.filter((r) => r.hp > 0);
     player.stats.damageRoots += dealt;
-    if (s.focus.root && !s.roots.some((r) => r.uid === s.focus.root)) s.focus.root = null;
   }
   return { dealt, redirected: false, target: cardName(s, ordered[0].cardId), killed };
 }
@@ -528,8 +569,9 @@ function resolve(state: GameState): GameState {
     }
     const pool = volleyPool(arrows, player.coef);
     const effects: Effect[] = [];
-    for (const action of ACTIONS) {
-      const points = actionPoints(arrows, action, player.coef);
+    for (const group of groupArrows(arrows)) {
+      const action = group.action;
+      const points = volleyPool(group.arrows, player.coef);
       const amount = effectAmount(player.classId, action, points, boost);
       if (amount <= 0) continue;
       if (action === 'heal') {
@@ -544,7 +586,7 @@ function resolve(state: GameState): GameState {
         totals.nemesis += amount;
         effects.push({ action, points, amount, target: nemesisName(s) });
       } else {
-        const { dealt, redirected, target, killed } = damageMinions(ctx, action, amount, player);
+        const { dealt, redirected, target, killed } = damageMinions(ctx, action, amount, player, group.target);
         totals[redirected ? 'nemesis' : action] += dealt;
         effects.push({
           action: redirected ? 'nemesis' : action,
@@ -641,12 +683,6 @@ function usePower(state: GameState, playerId: string, targetUid?: string): GameS
   return s;
 }
 
-function setFocus(state: GameState, kind: 'creature' | 'root', uid: string | null): GameState {
-  const list = kind === 'creature' ? state.creatures : state.roots;
-  if (uid !== null && !list.some((x) => x.uid === uid)) return state;
-  return { ...state, focus: { ...state.focus, [kind]: uid } };
-}
-
 export function reduce(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'start':
@@ -661,8 +697,6 @@ export function reduce(state: GameState, action: GameAction): GameState {
       return resolve(state);
     case 'power':
       return usePower(state, action.playerId, action.targetUid);
-    case 'focus':
-      return setFocus(state, action.kind, action.uid);
   }
 }
 
