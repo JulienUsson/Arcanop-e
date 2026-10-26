@@ -4099,3 +4099,30 @@ body.fury-mode::before {
     opacity: 0.2;
   }
 }
+
+.wifi-qr .field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0.7rem 0;
+}
+
+.wifi-qr .field > span:first-child {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.wifi-qr .field input {
+  width: 100%;
+}
+
+.wifi-qr .field .row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.wifi-qr .field .row input {
+  flex: 1;
+  min-width: 0;
+}

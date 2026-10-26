@@ -15,6 +15,7 @@ import { PowerPanel } from '../components/PowerPanel';
 import { QrCode } from '../components/QrCode';
 import { QrScanner } from '../components/QrScanner';
 import { VolleyInput } from '../components/VolleyInput';
+import { WifiQr } from '../components/WifiQr';
 import { useWakeLock } from '../wakeLock';
 import { EndSummary } from './EndSummary';
 
@@ -268,6 +269,7 @@ function ArchersTab({ session, onQuit }: { session: HostSession; onQuit: () => v
           Commencer la partie
         </button>
       )}
+      <WifiQr />
       <section className="panel">
         <button className="link" onClick={() => setShowLink(!showLink)}>
           {showLink ? 'Masquer' : 'Afficher'} le lien de l’application
