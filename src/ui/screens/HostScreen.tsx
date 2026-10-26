@@ -105,10 +105,15 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
               ⚔️ Combat
             </button>
             <button className={tab === 'saisie' ? 'active' : ''} onClick={() => setTab('saisie')}>
-              🎯 Saisie{phase.kind === 'volley' ? ` ${submittedCount}/${state.players.length}` : ''}
+              🎯 Saisie
+              {phase.kind === 'volley' && (
+                <span className={`count${allSubmitted ? ' done' : ''}`}>
+                  {submittedCount}/{state.players.length}
+                </span>
+              )}
             </button>
             <button className={tab === 'archers' ? 'active' : ''} onClick={() => setTab('archers')}>
-              🏹 Archers <span className="count">{snap.phones}📱</span>
+              🏹 Archers <span className="count">📱{snap.phones}</span>
             </button>
           </nav>
 
@@ -154,25 +159,39 @@ export function HostScreen({ session, onQuit }: { session: HostSession; onQuit: 
                   const entry = roster.find((r) => r.playerId === p.id);
                   const done = phase.kind === 'volley' && !!phase.submissions[p.id];
                   return (
-                    <button key={p.id} className={`chip${p.id === selectedId ? ' selected' : ''}`} onClick={() => setSelected(p.id)}>
-                      {CLASSES[p.classId].emoji} {p.name}
-                      {p.bot && ' 🤖'}
-                      {entry?.status === 'online' && ' 📱'}
-                      {done && ' ✓'}
+                    <button
+                      key={p.id}
+                      className={`player-chip${p.id === selectedId ? ' selected' : ''}${done ? ' done' : ''}`}
+                      style={{ ['--class-color' as string]: CLASSES[p.classId].color }}
+                      onClick={() => setSelected(p.id)}
+                    >
+                      <span className="player-chip-emoji">{CLASSES[p.classId].emoji}</span>
+                      <span className="player-chip-name">{p.bot ? CLASSES[p.classId].name : p.name}</span>
+                      <span className="player-chip-tags">
+                        {p.bot && '🤖'}
+                        {entry?.status === 'online' && '📱'}
+                        {done && '✓'}
+                      </span>
                     </button>
                   );
                 })}
               </div>
               <div className="saisie-head">
-                {roster.find((r) => r.playerId === selectedId)?.status === 'online' ? (
-                  <p className="hint">Cet archer saisit sur son téléphone. Une saisie ici remplace la sienne.</p>
-                ) : (
-                  <span />
-                )}
+                <div className="saisie-who">
+                  <strong>
+                    {CLASSES[selectedPlayer.classId].emoji} {selectedPlayer.name}
+                  </strong>
+                  <small>
+                    {CLASSES[selectedPlayer.classId].name} · {selectedPlayer.bot ? 'compagnon' : levelText(selectedPlayer)}
+                  </small>
+                </div>
                 <button className="ghost small" onClick={() => setSheet(true)}>
-                  📜 Fiche {CLASSES[selectedPlayer.classId].name}
+                  📜 Fiche
                 </button>
               </div>
+              {roster.find((r) => r.playerId === selectedId)?.status === 'online' && (
+                <p className="hint saisie-phone">Cet archer saisit sur son téléphone. Une saisie ici remplace la sienne.</p>
+              )}
               {selectedPlayer.bot && phase.kind !== 'volley' ? (
                 <p className="hint center bot-wait">🤖 {selectedPlayer.name} tirera ses flèches au début de la prochaine volée.</p>
               ) : (

@@ -426,8 +426,11 @@ textarea {
 
 .tabs button {
   flex: 1;
+  min-width: 0;
   background: var(--bg-2);
   font-weight: 600;
+  white-space: nowrap;
+  padding-inline: 0.4em;
 }
 
 .tabs button.active {
@@ -437,8 +440,21 @@ textarea {
 }
 
 .tabs .count {
-  font-size: 0.8rem;
-  opacity: 0.8;
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.2em 0.4em;
+  border-radius: 99px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--muted);
+}
+
+.tabs .count.done {
+  background: var(--good);
+  color: #08240f;
 }
 
 /* Narration */
@@ -656,11 +672,55 @@ textarea {
 /* Saisie */
 
 .player-tabs {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 0.35rem;
-  overflow-x: auto;
-  padding-bottom: 0.4rem;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.player-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0.35em 0.6em;
+  border-radius: 12px;
+  background: var(--bg-2);
+  border-left: 3px solid var(--class-color, var(--border));
+  text-align: left;
+}
+
+.player-chip.selected {
+  border-color: var(--accent);
+  border-left-color: var(--class-color, var(--accent));
+  background: rgba(217, 180, 90, 0.18);
+  color: var(--accent-2);
+}
+
+.player-chip.done {
+  opacity: 0.75;
+}
+
+.player-chip-emoji {
+  flex: none;
+}
+
+.player-chip-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-chip-tags {
+  flex: none;
+  font-size: 0.85rem;
+}
+
+.player-chip.done .player-chip-tags {
+  color: var(--good);
 }
 
 .chip {
@@ -1643,11 +1703,31 @@ button.pulse:not(:disabled) {
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.4rem;
 }
 
-.saisie-head .hint {
-  margin: 0;
+.saisie-who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.saisie-who strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saisie-who small {
+  color: var(--muted);
+}
+
+.saisie-head button {
+  flex: none;
+}
+
+.saisie-phone {
+  margin: 0 0 0.4rem;
 }
 
 .small-link {
