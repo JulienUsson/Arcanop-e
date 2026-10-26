@@ -26,6 +26,8 @@ Le workflow `.github/workflows/deploy.yml` publie le build sur GitHub Pages à c
 4. **Partie** : un guide de phase indique à chacun ce qu'il faut faire (🏹 Conseil & tir → 🎯 Saisie → ⚔️ Résolution → 💀 Riposte). L'hôte fait avancer les étapes et révèle les cartes de la Némésis ; chaque carte, chaque résolution et chaque pouvoir s'affiche en plein écran sur tous les téléphones.
 5. **Fin de partie** : résumé, distinctions et statistiques par archer.
 
+**Wi-Fi partagé** : si les téléphones ne se trouvent pas sur le Wi-Fi du lieu, l'hôte active le partage de connexion de son téléphone. L'onglet *Archers* génère un QR code Wi-Fi (format `WIFI:T:WPA;S:…;P:…;;`, compris par l'appareil photo d'iOS et d'Android) à partir du nom du réseau et du mot de passe, enregistrés dans le `localStorage` de l'hôte pour les séances suivantes.
+
 Les archers sans téléphone et les compagnons sont saisis par l'hôte (onglet *Saisie*). L'hôte peut aussi corriger la saisie d'un archer connecté et annuler la dernière action.
 
 ## Règles
